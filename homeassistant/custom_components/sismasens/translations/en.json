@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SISMASENS — Device Setup",
-        "description": "Enter the ESPHome device prefix (e.g. `mi-001`). The integration will look for entities like `sensor.mi_001_earthquake` already present in Home Assistant.",
+        "description": "Enter the ESPHome device prefix (e.g. `mi-001`). The integration will look for entities like `binary_sensor.sismasens_mi_001_mi_001_earthquake` already present in Home Assistant.",
         "data": {
           "device_prefix": "Device prefix"
         }
@@ -13,13 +13,16 @@
         "description": "Enable cloud publishing to share your seismic data on the SISMASENS network. Register at {register_url} to get your token.",
         "data": {
           "cloud_enabled": "Enable cloud publishing",
-          "cloud_token": "MQTT token"
+          "cloud_token": "MQTT token",
+          "latitude": "Sensor latitude (°)",
+          "longitude": "Sensor longitude (°)"
         }
       }
     },
     "error": {
       "device_not_found": "Device not found. Make sure the ESPHome device is integrated in Home Assistant and the prefix is correct (e.g. mi-001).",
-      "token_required": "A token is required when cloud publishing is enabled."
+      "token_required": "A token is required when cloud publishing is enabled.",
+      "coordinates_required": "Latitude and longitude are required when cloud publishing is enabled."
     },
     "abort": {
       "already_configured": "This device is already configured."
@@ -31,7 +34,9 @@
         "title": "SISMASENS — Options",
         "data": {
           "cloud_enabled": "Enable cloud publishing",
-          "cloud_token": "MQTT token"
+          "cloud_token": "MQTT token",
+          "latitude": "Sensor latitude (°)",
+          "longitude": "Sensor longitude (°)"
         }
       }
     }

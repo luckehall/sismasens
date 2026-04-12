@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, VERSION
+from .const import DOMAIN, VERSION, ESPHOME_BUTTONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,14 +19,14 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    prefix = entry.data["device_prefix"]
     import re
+    prefix = entry.data["device_prefix"]
     norm = re.sub(r"[^a-z0-9]", "_", prefix.lower())
 
     async_add_entities([
-        SismasensButton(hass, prefix, norm, "clear_sensor", "Clear Sensor", "mdi:cancel"),
-        SismasensButton(hass, prefix, norm, "set",          "Set (D7S Reset)", "mdi:refresh"),
-        SismasensButton(hass, prefix, norm, "reboot",       "Reboot",        "mdi:restart"),
+        SismasensButton(hass, prefix, norm, "clear_sensor", "Clear Sensor",  "mdi:delete-sweep"),
+        SismasensButton(hass, prefix, norm, "set",          "Set (D7S Reset)", "mdi:cog"),
+        SismasensButton(hass, prefix, norm, "reboot",       "Reboot",         "mdi:restart"),
     ])
 
 
@@ -59,12 +59,8 @@ class SismasensButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Chiama il button ESPHome corrispondente tramite il servizio button.press."""
-        action_map = {
-            "clear_sensor": f"button.{self._norm_prefix}_clear_sensor",
-            "set":          f"button.{self._norm_prefix}_set",
-            "reboot":       f"button.{self._norm_prefix}_reboot",
-        }
-        entity_id = action_map.get(self._action)
+        template = ESPHOME_BUTTONS.get(self._action)
+        entity_id = template.format(prefix=self._norm_prefix) if template else None
         if entity_id is None:
             return
 

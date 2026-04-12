@@ -16,6 +16,8 @@ from .const import (
     CONF_DEVICE_PREFIX,
     CONF_CLOUD_TOKEN,
     CONF_CLOUD_ENABLED,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
     ESPHOME_ENTITIES,
 )
 
@@ -86,15 +88,19 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_cloud(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 2 (opzionale): configurazione pubblicazione cloud."""
+        """Step 2 (opzionale): configurazione pubblicazione cloud + coordinate GPS."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             cloud_enabled = user_input.get(CONF_CLOUD_ENABLED, False)
             cloud_token = user_input.get(CONF_CLOUD_TOKEN, "").strip()
+            lat = user_input.get(CONF_LATITUDE)
+            lon = user_input.get(CONF_LONGITUDE)
 
             if cloud_enabled and not cloud_token:
                 errors[CONF_CLOUD_TOKEN] = "token_required"
+            elif cloud_enabled and (lat is None or lon is None):
+                errors[CONF_LATITUDE] = "coordinates_required"
             else:
                 return self.async_create_entry(
                     title=f"SISMASENS {self._device_prefix}",
@@ -102,6 +108,8 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_DEVICE_PREFIX: self._device_prefix,
                         CONF_CLOUD_ENABLED: cloud_enabled,
                         CONF_CLOUD_TOKEN: cloud_token,
+                        CONF_LATITUDE: lat,
+                        CONF_LONGITUDE: lon,
                     },
                 )
 
@@ -111,6 +119,8 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Optional(CONF_CLOUD_ENABLED, default=False): bool,
                     vol.Optional(CONF_CLOUD_TOKEN, default=""): str,
+                    vol.Optional(CONF_LATITUDE): vol.Coerce(float),
+                    vol.Optional(CONF_LONGITUDE): vol.Coerce(float),
                 }
             ),
             errors=errors,
@@ -150,6 +160,14 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
                         CONF_CLOUD_TOKEN,
                         default=self._config_entry.data.get(CONF_CLOUD_TOKEN, ""),
                     ): str,
+                    vol.Optional(
+                        CONF_LATITUDE,
+                        default=self._config_entry.data.get(CONF_LATITUDE),
+                    ): vol.Coerce(float),
+                    vol.Optional(
+                        CONF_LONGITUDE,
+                        default=self._config_entry.data.get(CONF_LONGITUDE),
+                    ): vol.Coerce(float),
                 }
             ),
         )

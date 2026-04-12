@@ -18,6 +18,8 @@ from .const import (
     CONF_DEVICE_PREFIX,
     CONF_CLOUD_TOKEN,
     CONF_CLOUD_ENABLED,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
     CLOUD_BROKER,
     CLOUD_PORT,
     CLOUD_TOPIC_EVENTS,
@@ -45,6 +47,9 @@ class SismasensCoordinator(DataUpdateCoordinator):
         self._norm_prefix: str = _normalize_prefix(self._prefix)
         self._cloud_enabled: bool = config_entry.data.get(CONF_CLOUD_ENABLED, False)
         self._cloud_token: str = config_entry.data.get(CONF_CLOUD_TOKEN, "")
+        # Coordinate statiche configurate al setup — non cambiano a runtime
+        self._lat: float | None = config_entry.data.get(CONF_LATITUDE)
+        self._lon: float | None = config_entry.data.get(CONF_LONGITUDE)
 
         self._mqtt_client = None
         self._unsub_state_listener = None
@@ -61,9 +66,10 @@ class SismasensCoordinator(DataUpdateCoordinator):
             "inst_si": 0.0,
             "inst_pga": 0.0,
             "inst_mag": 0.0,
-            "lat": None,
-            "lon": None,
             "location": "",
+            "last_eartquake": None,
+            "fw_version": None,
+            "power_supply": None,
             "last_event_time": None,
         }
 
@@ -104,13 +110,13 @@ class SismasensCoordinator(DataUpdateCoordinator):
 
         self._sync_state(entity_id, new_state)
 
-        # Rileva fine terremoto: earthquake passa da 1 → 0
+        # Rileva fine terremoto: binary_sensor earthquake passa da on → off
         earthquake_entity = self._entity_id("earthquake")
         if (
             entity_id == earthquake_entity
             and old_state is not None
-            and old_state.state == "1"
-            and new_state.state == "0"
+            and old_state.state == "on"
+            and new_state.state == "off"
         ):
             _LOGGER.info("SISMASENS: terremoto terminato, raccolta dati evento")
             self.data["last_event_time"] = datetime.now(timezone.utc).isoformat()
@@ -125,12 +131,14 @@ class SismasensCoordinator(DataUpdateCoordinator):
         """Aggiorna self.data con il nuovo valore dell'entità."""
         try:
             val = state.state
+            if val in ("unknown", "unavailable"):
+                return
             if entity_id == self._entity_id("earthquake"):
-                self.data["earthquake"] = val not in ("0", "off", "unknown", "unavailable")
+                self.data["earthquake"] = val == "on"
             elif entity_id == self._entity_id("collapse"):
-                self.data["collapse"] = val not in ("0", "off", "unknown", "unavailable")
+                self.data["collapse"] = val == "on"
             elif entity_id == self._entity_id("shutoff"):
-                self.data["shutoff"] = val not in ("0", "off", "unknown", "unavailable")
+                self.data["shutoff"] = val == "on"
             elif entity_id == self._entity_id("last_si"):
                 self.data["last_si"] = float(val)
             elif entity_id == self._entity_id("last_pga"):
@@ -145,13 +153,14 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 self.data["inst_pga"] = float(val)
             elif entity_id == self._entity_id("inst_mag"):
                 self.data["inst_mag"] = float(val)
-            elif entity_id == self._entity_id("gps"):
-                parts = val.split(",")
-                if len(parts) == 2:
-                    self.data["lat"] = float(parts[0].strip())
-                    self.data["lon"] = float(parts[1].strip())
             elif entity_id == self._entity_id("location"):
                 self.data["location"] = val
+            elif entity_id == self._entity_id("last_eartquake"):
+                self.data["last_eartquake"] = val
+            elif entity_id == self._entity_id("fw_version"):
+                self.data["fw_version"] = val
+            elif entity_id == self._entity_id("power_supply"):
+                self.data["power_supply"] = val
         except (ValueError, AttributeError):
             pass
 
@@ -192,8 +201,8 @@ class SismasensCoordinator(DataUpdateCoordinator):
         payload = {
             "sensor_id": self._prefix,
             "timestamp": self.data.get("last_event_time"),
-            "lat": self.data.get("lat"),
-            "lon": self.data.get("lon"),
+            "lat": self._lat,
+            "lon": self._lon,
             "location": self.data.get("location", ""),
             "si": self.data.get("last_si", 0.0),
             "pga": self.data.get("last_pga", 0.0),
