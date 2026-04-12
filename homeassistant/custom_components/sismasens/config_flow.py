@@ -56,18 +56,21 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             prefix = user_input[CONF_DEVICE_PREFIX].strip()
+            norm = _normalize_prefix(prefix)
+
+            # Impedisce config entry duplicate per lo stesso device
+            await self.async_set_unique_id(norm)
+            self._abort_if_unique_id_configured()
+
             missing = _check_esphome_entities(self.hass, prefix)
 
             # Richiediamo almeno l'entità earthquake
-            norm = _normalize_prefix(prefix)
             earthquake_entity = ESPHOME_ENTITIES["earthquake"].format(prefix=norm)
             if self.hass.states.get(earthquake_entity) is None:
                 errors[CONF_DEVICE_PREFIX] = "device_not_found"
             else:
                 if missing:
-                    _LOGGER.warning(
-                        "SISMASENS: entità mancanti per '%s': %s", prefix, missing
-                    )
+                    _LOGGER.warning("SISMASENS: entità mancanti per '%s': %s", prefix, missing)
                 self._device_prefix = prefix
                 return await self.async_step_cloud()
 

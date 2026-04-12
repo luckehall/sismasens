@@ -40,10 +40,12 @@ class SismasensBinarySensor(CoordinatorEntity, BinarySensorEntity):
         name: str,
         device_class: BinarySensorDeviceClass,
     ) -> None:
+        import re
         super().__init__(coordinator)
+        norm_prefix = re.sub(r"[^a-z0-9]", "_", prefix.lower())
         self._data_key = data_key
         self._attr_name = f"SISMASENS {prefix} {name}"
-        self._attr_unique_id = f"sismasens_{prefix}_{data_key}"
+        self._attr_unique_id = f"sismasens_{norm_prefix}_{data_key}"
         self._attr_device_class = device_class
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, prefix)},

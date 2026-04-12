@@ -24,9 +24,9 @@ async def async_setup_entry(
     norm = re.sub(r"[^a-z0-9]", "_", prefix.lower())
 
     async_add_entities([
-        SismasensButton(hass, prefix, norm, "clear_sensor", "Clear Sensor",  "mdi:delete-sweep"),
-        SismasensButton(hass, prefix, norm, "set",          "Set (D7S Reset)", "mdi:cog"),
-        SismasensButton(hass, prefix, norm, "reboot",       "Reboot",         "mdi:restart"),
+        SismasensButton(prefix, norm, "clear_sensor", "Clear Sensor",  "mdi:delete-sweep"),
+        SismasensButton(prefix, norm, "set",          "Set (D7S Reset)", "mdi:cog"),
+        SismasensButton(prefix, norm, "reboot",       "Reboot",         "mdi:restart"),
     ])
 
 
@@ -35,19 +35,17 @@ class SismasensButton(ButtonEntity):
 
     def __init__(
         self,
-        hass: HomeAssistant,
         prefix: str,
         norm_prefix: str,
         action: str,
         name: str,
         icon: str,
     ) -> None:
-        self._hass = hass
         self._prefix = prefix
         self._norm_prefix = norm_prefix
         self._action = action
         self._attr_name = f"SISMASENS {prefix} {name}"
-        self._attr_unique_id = f"sismasens_{prefix}_btn_{action}"
+        self._attr_unique_id = f"sismasens_{norm_prefix}_btn_{action}"
         self._attr_icon = icon
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, prefix)},
@@ -64,11 +62,11 @@ class SismasensButton(ButtonEntity):
         if entity_id is None:
             return
 
-        if self._hass.states.get(entity_id) is None:
+        if self.hass.states.get(entity_id) is None:
             _LOGGER.warning("SISMASENS: entità button '%s' non trovata in HA", entity_id)
             return
 
-        await self._hass.services.async_call(
+        await self.hass.services.async_call(
             "button",
             "press",
             {"entity_id": entity_id},
