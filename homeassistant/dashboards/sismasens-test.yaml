@@ -120,15 +120,15 @@ views:
                 name: Ultimo evento
                 icon: mdi:calendar-clock
               - type: divider
-              - entity: button.sismasens_mi_001_btn_clear_sensor
+              - entity: button.sismasens_mi_001_clear_sensor
                 name: "SISMASENS — Clear"
                 icon: mdi:delete-sweep
                 action_name: Esegui
-              - entity: button.sismasens_mi_001_btn_set
+              - entity: button.sismasens_mi_001_set_d7s_reset
                 name: "SISMASENS — Set (D7S Reset)"
                 icon: mdi:cog
                 action_name: Esegui
-              - entity: button.sismasens_mi_001_btn_reboot
+              - entity: button.sismasens_mi_001_reboot
                 name: "SISMASENS — Reboot ESP32"
                 icon: mdi:restart
                 action_name: Esegui
