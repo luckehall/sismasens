@@ -264,18 +264,18 @@ class SismasensComponent : public PollingComponent {
         eq_ = false; cl_ = false; so_ = false;
         ESP_LOGD("run", ">   EARTHQUAKE ENDED!");
 
-        SI_ = D7S.getLastestSI(0) * 10;
+        SI_ = D7S.getLastestSI(0) * 10;                  // kine (cm/s)
         ESP_LOGD("run", ">   READ lastSI");
         vTaskDelay(pdMS_TO_TICKS(350));
 
-        PGA_ = D7S.getLastestPGA(0) / 9.80665;
+        PGA_ = D7S.getLastestPGA(0) / 0.980665;          // g (libreria RAK12027 restituisce ~0.1 m/s² per unità)
         ESP_LOGD("run", ">   READ lastPGA");
         vTaskDelay(pdMS_TO_TICKS(350));
 
         TEMP_ = D7S.getLastestTemperature(0);
         ESP_LOGD("run", ">   READ lastTEMP");
 
-        MAG_ = magnitude(SI_, PGA_);
+        MAG_ = magnitude(SI_, PGA_);                      // scPGA calibrata in g
 
         if (earthquake_sensor_ != nullptr) earthquake_sensor_->publish_state(eq_);
         if (collapse_sensor_   != nullptr) collapse_sensor_->publish_state(cl_);
@@ -292,10 +292,9 @@ class SismasensComponent : public PollingComponent {
 
     if ((millis() - t) > delay_time) {
       t = millis();
-      SI_  = D7S.getInstantaneusSI() * 10;
-      // BUGFIX: divisore corretto 9.80665 (era .980665 — errore 10x)
-      PGA_ = D7S.getInstantaneusPGA() / 9.80665;
-      MAG_ = magnitude(SI_, PGA_);
+      SI_  = D7S.getInstantaneusSI() * 10;               // kine (cm/s)
+      PGA_ = D7S.getInstantaneusPGA() / 0.980665;        // g (libreria RAK12027 restituisce ~0.1 m/s² per unità)
+      MAG_ = magnitude(SI_, PGA_);                       // scPGA calibrata in g
       ESP_LOGD("sisma", "SI: %f  PGA: %f  MAG: %f", SI_, PGA_, MAG_);
 
       if (inst_si_sensor_  != nullptr) inst_si_sensor_->publish_state(SI_);
