@@ -83,8 +83,8 @@ views:
             title: "Verifica coerenza valori"
             show_header_toggle: false
             entities:
-              - entity: binary_sensor.sismasens_mi_001_mi_001_earthquake
-                name: "ESPHome — Earthquake"
+              - entity: sensor.sismasens_mi_001_mi_001_earthquake
+                name: "ESPHome — Earthquake (sensor 0/1)"
               - entity: sensor.sismasens_mi_001_mi_001_last_m
                 name: "ESPHome — Last M"
               - entity: sensor.sismasens_mi_001_mi_001_last_si

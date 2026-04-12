@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SISMASENS — Device Setup",
-        "description": "Enter the ESPHome device prefix (e.g. `mi-001`). The integration will look for entities like `binary_sensor.sismasens_mi_001_mi_001_earthquake` already present in Home Assistant.",
+        "description": "Enter the ESPHome device prefix (e.g. `mi-001`). The integration will look for entities like `sensor.sismasens_mi_001_mi_001_earthquake` already present in Home Assistant.",
         "data": {
           "device_prefix": "Device prefix"
         }

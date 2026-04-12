@@ -34,7 +34,7 @@ Per questo motivo è necessario, nell'ordine:
 2. **Integrare il device in Home Assistant** tramite l'integrazione ESPHome standard
    (HA scopre automaticamente i device ESPHome sulla rete locale)
 3. **Verificare che le entità ESPHome siano presenti** in HA —
-   devono comparire entità come `binary_sensor.sismasens_<prefisso>_<prefisso>_earthquake`
+   devono comparire entità come `sensor.sismasens_<prefisso>_<prefisso>_earthquake`
    prima di poter configurare l'integrazione SISMASENS
 
 Solo a questo punto l'installazione dell'integrazione SISMASENS avrà successo.
@@ -118,9 +118,9 @@ docker compose restart nginx
 
 | Entità | Tipo | Descrizione |
 |---|---|---|
-| `binary_sensor.sismasens_*_earthquake` | Binary | Terremoto in corso |
-| `binary_sensor.sismasens_*_collapse` | Binary | Collapse rilevato |
-| `binary_sensor.sismasens_*_shutoff` | Binary | Shutoff rilevato |
+| `binary_sensor.sismasens_*_earthquake` | Binary | Terremoto in corso (da coordinator) |
+| `binary_sensor.sismasens_*_collapse` | Binary | Collapse rilevato (da coordinator) |
+| `binary_sensor.sismasens_*_shutoff` | Binary | Shutoff rilevato (da coordinator) |
 | `sensor.sismasens_*_last_si` | Sensor | Ultimo SI (cm/s) |
 | `sensor.sismasens_*_last_pga` | Sensor | Ultimo PGA (g) |
 | `sensor.sismasens_*_last_temp` | Sensor | Temperatura sensore (°C) |

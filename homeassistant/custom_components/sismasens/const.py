@@ -20,7 +20,7 @@ CLOUD_TOPIC_EVENTS = "sismasens/events/{sensor_id}"
 # si chiamano "{PREFIX} *", quindi l'entity_id HA risultante è:
 #   {domain}.sismasens_{prefix}_{prefix}_{suffix}
 # es. prefix="mi-001" → norm="mi_001"
-#   binary_sensor.sismasens_mi_001_mi_001_earthquake
+#   sensor.sismasens_mi_001_mi_001_earthquake  (sensor numerico 0/1, non binary_sensor)
 ESPHOME_ENTITIES = {
     # Sensori numerici 0/1 — earthquake/collapse/shutoff sono sensor::Sensor in ESPHome
     "earthquake":     "sensor.sismasens_{prefix}_{prefix}_earthquake",
