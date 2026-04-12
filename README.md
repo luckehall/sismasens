@@ -17,6 +17,32 @@ Sistema open source per il monitoraggio sismico basato su sensore **OMRON D7S** 
 
 ---
 
+## Prerequisiti
+
+### Hardware
+- **OMRON D7S** (o modulo breakout **RAK12027**)
+- **ESP32** (es. ESP32-WROOM-32) collegato al D7S via I2C
+
+### Software — obbligatori prima di installare l'integrazione HA
+L'integrazione SISMASENS per Home Assistant **non comunica direttamente con l'ESP32**.
+Legge le entità già create dall'integrazione ESPHome standard in HA ("approccio layered").
+
+Per questo motivo è necessario, nell'ordine:
+
+1. **Flashare il firmware ESPHome** sul device con il componente `sismasens`
+   (vedi [`esphome/`](esphome/) e la sezione *Installazione rapida* qui sotto)
+2. **Integrare il device in Home Assistant** tramite l'integrazione ESPHome standard
+   (HA scopre automaticamente i device ESPHome sulla rete locale)
+3. **Verificare che le entità ESPHome siano presenti** in HA —
+   devono comparire entità come `binary_sensor.sismasens_<prefisso>_<prefisso>_earthquake`
+   prima di poter configurare l'integrazione SISMASENS
+
+Solo a questo punto l'installazione dell'integrazione SISMASENS avrà successo.
+Il prefisso da inserire nel config flow (es. `mi-001`) deve corrispondere
+al nome del device ESPHome (`sismasens-mi-001`).
+
+---
+
 ## Componenti
 
 | Cartella | Descrizione |
@@ -40,6 +66,9 @@ esphome run esphome/templates/mio-sensore.yaml
 
 ### 2. Home Assistant — Custom Integration
 
+> **Prerequisito:** il device ESPHome deve essere già integrato in HA e le sue entità
+> devono essere visibili prima di procedere. Vedi la sezione [Prerequisiti](#prerequisiti).
+
 **Via HACS (raccomandato):**
 1. Apri HACS → Integrazioni → Menu ⋮ → Repository personalizzati
 2. Aggiungi `https://github.com/luckehall/sismasens` — categoria `Integration`
@@ -54,8 +83,8 @@ cp -r homeassistant/custom_components/sismasens \
 ```
 
 **Setup:**
-1. Inserisci il prefisso del device ESPHome (es. `mi-001`)
-2. (Opzionale) Inserisci il token MQTT ottenuto su [sismasens.iotzator.com](https://sismasens.iotzator.com/register)
+1. Inserisci il prefisso del device ESPHome (es. `mi-001`) — deve corrispondere al nome del device (`sismasens-mi-001`)
+2. (Opzionale) Inserisci latitudine, longitudine e token MQTT ottenuto su [sismasens.iotzator.com](https://sismasens.iotzator.com/register)
 
 ### 3. Backend (VPS)
 
@@ -112,7 +141,8 @@ docker compose restart nginx
 - Custom integration Home Assistant con config flow e pubblicazione cloud
 - Backend FastAPI + TimescaleDB + EMQX
 - Dashboard pubblica con mappa Leaflet
-- **Bugfix**: divisore PGA istantaneo corretto (`/ 9.80665` invece di `/ .980665`)
+- **Bugfix PGA**: la libreria RAK12027 restituisce PGA in kGal (registro in Gal / 1000);
+  divisore corretto `/ 0.980665` (1g = 0.980665 kGal) per ottenere il valore in g
 
 ### v2.5
 - Versione originale ESPHome custom component
