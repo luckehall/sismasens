@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SISMASENS — Device Setup",
+        "description": "Enter the ESPHome device prefix (e.g. `mi-001`). The integration will look for entities like `sensor.mi_001_earthquake` already present in Home Assistant.",
+        "data": {
+          "device_prefix": "Device prefix"
+        }
+      },
+      "cloud": {
+        "title": "SISMASENS — Cloud Publishing (optional)",
+        "description": "Enable cloud publishing to share your seismic data on the SISMASENS network. Register at {register_url} to get your token.",
+        "data": {
+          "cloud_enabled": "Enable cloud publishing",
+          "cloud_token": "MQTT token"
+        }
+      }
+    },
+    "error": {
+      "device_not_found": "Device not found. Make sure the ESPHome device is integrated in Home Assistant and the prefix is correct (e.g. mi-001).",
+      "token_required": "A token is required when cloud publishing is enabled."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SISMASENS — Options",
+        "data": {
+          "cloud_enabled": "Enable cloud publishing",
+          "cloud_token": "MQTT token"
+        }
+      }
+    }
+  }
+}

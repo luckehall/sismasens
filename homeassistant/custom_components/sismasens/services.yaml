@@ -1,0 +1,23 @@
+clear_sensor:
+  name: Clear Sensor
+  description: Azzera la memoria del sensore D7S e tutti i valori pubblicati.
+  fields:
+    device_prefix:
+      name: Device prefix
+      description: Il prefisso del device SISMASENS (es. mi-001).
+      required: true
+      example: "mi-001"
+      selector:
+        text:
+
+set_device:
+  name: Set Device (D7S Hard Reset)
+  description: Esegue un hard reset del sensore D7S tramite il pin SET.
+  fields:
+    device_prefix:
+      name: Device prefix
+      description: Il prefisso del device SISMASENS (es. mi-001).
+      required: true
+      example: "mi-001"
+      selector:
+        text:

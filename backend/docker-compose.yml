@@ -1,0 +1,147 @@
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL + TimescaleDB
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: sismasens-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sismasens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sismasens}
+      POSTGRES_DB: sismasens
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sismasens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # FastAPI Backend
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: sismasens-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://sismasens:${POSTGRES_PASSWORD:-sismasens}@postgres:5432/sismasens
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      MQTT_TOKEN_SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
+      ALLOWED_ORIGINS: "https://sismasens.iotzator.com,http://localhost:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  # ---------------------------------------------------------------------------
+  # MQTT Ingestor
+  # ---------------------------------------------------------------------------
+  ingestor:
+    build:
+      context: ./ingestor
+      dockerfile: Dockerfile
+    container_name: sismasens-ingestor
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://sismasens:${POSTGRES_PASSWORD:-sismasens}@postgres:5432/sismasens
+      MQTT_BROKER: emqx
+      MQTT_PORT: 1883
+      MQTT_INGESTOR_USER: ingestor
+      MQTT_INGESTOR_PASS: ${MQTT_INGESTOR_PASS:-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # EMQX Broker MQTT
+  # ---------------------------------------------------------------------------
+  emqx:
+    image: emqx/emqx:5.6.0
+    container_name: sismasens-emqx
+    restart: unless-stopped
+    environment:
+      EMQX_NAME: sismasens
+      EMQX_HOST: sismasens.iotzator.com
+      # Auth JWT: EMQX verifica i token con il nostro secret
+      EMQX_AUTHENTICATION__1__MECHANISM: jwt
+      EMQX_AUTHENTICATION__1__FROM: password
+      EMQX_AUTHENTICATION__1__USE_JWKS: false
+      EMQX_AUTHENTICATION__1__SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
+      EMQX_AUTHENTICATION__1__SECRET_BASE64_ENCODED: false
+      EMQX_AUTHENTICATION__1__JWT_CLAIMS_CHECKS: "{}"
+    ports:
+      - "1883:1883"    # MQTT
+      - "8883:8883"    # MQTT/TLS
+      - "8083:8083"    # MQTT/WS
+      - "8084:8084"    # MQTT/WSS
+      - "18083:18083"  # Dashboard admin EMQX
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+      - ./broker/emqx/acl.conf:/opt/emqx/etc/acl.conf:ro
+    healthcheck:
+      test: ["CMD", "emqx", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Dashboard React (build statica servita da nginx)
+  # ---------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: sismasens-dashboard
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  # ---------------------------------------------------------------------------
+  # Nginx — Reverse proxy + TLS (certbot)
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: sismasens-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+    depends_on:
+      - api
+      - dashboard
+
+  # ---------------------------------------------------------------------------
+  # Certbot — rinnovo automatico TLS
+  # ---------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot
+    container_name: sismasens-certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet;
+          sleep 12h & wait $${!};
+        done"
+
+volumes:
+  postgres_data:
+  emqx_data:
+  emqx_log:
+  certbot_www:
+  certbot_conf:

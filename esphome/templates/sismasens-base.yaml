@@ -1,0 +1,271 @@
+# SISMASENS — Template base ESPHome
+#
+# Pinout ESP32:
+#   GPIO21 : SDA (I2C)
+#   GPIO22 : SCL (I2C)
+#   GPIO25 : SET (hard reset D7S)
+#   GPIO32 : INT2 (earthquake interrupt)
+#   GPIO33 : INT1 (collapse/shutoff interrupt)
+#   GPIO35 : Vcc monitor (ADC, input-only)
+#   GPIO26 <-> GPIO27 : jumper fisico backup clear
+
+esphome:
+  name: $devicename
+  libraries:
+    - "Wire"
+    - "RAK12027-D7S"
+  external_components:
+    - source:
+        type: git
+        url: https://github.com/sismasens/sismasens
+        ref: main
+      components: [sismasens]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+api:
+  reboot_timeout: 5min
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    id: my_ota
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: $hotspot
+    password: !secret hotspot_password
+
+web_server:
+  port: 80
+  auth:
+    username: sismasens
+    password: !secret web_server_password
+  ota: false
+
+time:
+  - platform: sntp
+    id: my_time
+
+captive_portal:
+
+# ---------------------------------------------------------------------------
+# SENSORI
+# ---------------------------------------------------------------------------
+sensor:
+  - platform: sismasens
+    id: sismasens_component
+
+    earthquake:
+      name: ${site} - Earthquake
+      id: status_eq
+      icon: mdi:alert
+      unit_of_measurement: " "
+      accuracy_decimals: 0
+
+    collapse:
+      name: ${site} - Collapse
+      unit_of_measurement: " "
+      icon: mdi:alert
+      accuracy_decimals: 0
+
+    shutoff:
+      name: ${site} - Shutoff
+      id: shutoff
+      unit_of_measurement: " "
+      icon: mdi:alert
+      accuracy_decimals: 0
+
+    last_si:
+      name: ${site} - Last SI
+      device_class: speed
+      state_class: measurement
+      unit_of_measurement: cm/s
+      accuracy_decimals: 1
+
+    last_pga:
+      name: ${site} - Last PGA
+      state_class: measurement
+      icon: mdi:speedometer
+      unit_of_measurement: g
+      accuracy_decimals: 3
+
+    last_temp:
+      name: ${site} - Last TEMP
+      device_class: temperature
+      state_class: measurement
+      unit_of_measurement: "°C"
+      accuracy_decimals: 2
+
+    last_mag:
+      name: ${site} - Last M
+      state_class: measurement
+      icon: mdi:speedometer
+      accuracy_decimals: 2
+
+    inst_si:
+      name: ${site} - Inst SI
+      device_class: speed
+      state_class: measurement
+      unit_of_measurement: cm/s
+      accuracy_decimals: 1
+
+    inst_pga:
+      name: ${site} - Inst PGA
+      state_class: measurement
+      icon: mdi:speedometer
+      unit_of_measurement: g
+      accuracy_decimals: 3
+
+    inst_mag:
+      name: ${site} - Inst M
+      state_class: measurement
+      icon: mdi:speedometer
+      accuracy_decimals: 2
+
+  - platform: adc
+    pin: GPIO35
+    id: Vcc
+    attenuation: 12db
+    name: ${site} - Power Supply
+    device_class: voltage
+    accuracy_decimals: 2
+    update_interval: 15s
+    filters:
+      - calibrate_linear:
+        - 0.142 -> 0.00
+        - 3.132 -> 5.00
+
+  - platform: wifi_signal
+    name: ${site} - WiFi Signal
+    update_interval: 60s
+
+# ---------------------------------------------------------------------------
+# BUTTON
+# ---------------------------------------------------------------------------
+button:
+  - platform: template
+    name: ${site} - Set
+    id: btn_set
+    icon: mdi:refresh
+    on_press:
+      - lambda: id(sismasens_component).do_set();
+
+  - platform: restart
+    name: ${site} - Reboot
+    id: btn_reboot
+    icon: mdi:restart
+
+  - platform: template
+    name: ${site} - Clear Sensor
+    id: btn_clear
+    icon: mdi:cancel
+    on_press:
+      - lambda: |-
+          id(sismasens_component).trigger_clear();
+          std::string str = "cleared!";
+          strcpy(id(last_event), str.c_str());
+
+# ---------------------------------------------------------------------------
+# STATUS LED
+# ---------------------------------------------------------------------------
+status_led:
+  pin:
+    number: GPIO2
+    inverted: false
+
+# ---------------------------------------------------------------------------
+# TEXT SENSOR
+# ---------------------------------------------------------------------------
+text_sensor:
+  - platform: version
+    name: ${site} - Version
+
+  - platform: wifi_info
+    ip_address:
+      name: ${site} - LAN IP address
+    mac_address:
+      name: ${site} - MAC ADDRESS
+
+  - platform: template
+    id: my_clock
+    name: ${site} - Time
+    icon: mdi:clock
+    lambda: |-
+      auto ore = to_string(id(my_time).now().hour);
+      if (ore.length() < 2){ ore = '0' + ore; }
+      auto minuti = to_string(id(my_time).now().minute);
+      if (minuti.length() < 2){ minuti = '0' + minuti; }
+      auto secondi = to_string(id(my_time).now().second);
+      if (secondi.length() < 2){ secondi = '0' + secondi; }
+      return ore + ":" + minuti + ":" + secondi;
+    update_interval: 10s
+
+  - platform: template
+    name: ${site} - Last Earthquake
+    id: last_eq
+    icon: mdi:calendar-alert
+    lambda: |-
+      static auto prev_status = id(status_eq).state;
+      auto new_status = id(status_eq).state;
+      if (prev_status == 0 && new_status == 1) {
+        prev_status = new_status;
+        auto ore    = to_string(id(my_time).now().hour);
+        if (ore.length() < 2){ ore = '0' + ore; }
+        auto minuti = to_string(id(my_time).now().minute);
+        if (minuti.length() < 2){ minuti = '0' + minuti; }
+        auto secondi = to_string(id(my_time).now().second);
+        if (secondi.length() < 2){ secondi = '0' + secondi; }
+        auto giorno = to_string(id(my_time).now().day_of_month);
+        auto mese   = to_string(id(my_time).now().month);
+        auto anno   = to_string(id(my_time).now().year);
+        std::string str = giorno + "/" + mese + "/" + anno + " " + ore + ":" + minuti + ":" + secondi;
+        strcpy(id(last_event), str.c_str());
+        return str;
+      } else {
+        prev_status = new_status;
+        return std::string(id(last_event));
+      }
+    update_interval: 1s
+
+  - platform: template
+    name: ${site} - GPS
+    lambda: |-
+      char buf[50];
+      sprintf(buf, "%f, %f", ${latitude}, ${longitude});
+      return std::string(buf);
+
+  - platform: template
+    name: ${site} - Location
+    lambda: |-
+      return std::string("${location}");
+
+  - platform: template
+    id: fw_version
+    name: ${site} - FW Version
+    lambda: return id(fw);
+
+# ---------------------------------------------------------------------------
+# GLOBALS
+# ---------------------------------------------------------------------------
+globals:
+  - id: last_event
+    type: char[30]
+    restore_value: yes
+    initial_value: "{'n','o','n','e'}"
+
+  - id: fw
+    type: std::string
+    restore_value: yes
+    max_restore_data_length: 12
+    initial_value: '"3.0.0"'

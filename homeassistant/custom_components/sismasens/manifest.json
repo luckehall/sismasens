@@ -1,0 +1,12 @@
+{
+  "domain": "sismasens",
+  "name": "SISMASENS Seismic Monitor",
+  "version": "1.0.0",
+  "documentation": "https://github.com/sismasens/sismasens",
+  "issue_tracker": "https://github.com/sismasens/sismasens/issues",
+  "codeowners": ["@sismasens"],
+  "requirements": ["paho-mqtt==1.6.1"],
+  "dependencies": [],
+  "iot_class": "local_push",
+  "config_flow": true
+}

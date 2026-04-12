@@ -1,0 +1,17 @@
+# SISMASENS — File di configurazione per singolo device
+# Copia questo file, rinominalo (es. sismasens-roma001.yaml) e personalizza le substitutions.
+# NON modificare sismasens-base.yaml direttamente.
+
+substitutions:
+  location:   "Roma (RM)"         # Nome leggibile della posizione
+  short_name: "rm"                # Codice città (2 lettere)
+  sequence:   "001"               # Numero progressivo del sensore
+  device_code: "roma001"          # Identificatore univoco (usato anche come sensor_id sul cloud)
+  latitude:   "41.902782"         # Latitudine decimale
+  longitude:  "12.496366"         # Longitudine decimale
+
+  site:         ${short_name}-${sequence}
+  devicename:   sismasens-${site}
+  hotspot:      ${devicename}-bku
+
+<<: !include sismasens-base.yaml
