@@ -173,7 +173,16 @@ class SismasensCoordinator(DataUpdateCoordinator):
         try:
             import paho.mqtt.client as mqtt
 
-            client = mqtt.Client(client_id=f"ha-sismasens-{self._norm_prefix}")
+            # Compatibile con paho-mqtt 2.x (CallbackAPIVersion) e 1.x
+            try:
+                client = mqtt.Client(
+                    callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+                    client_id=f"ha-sismasens-{self._norm_prefix}",
+                )
+            except AttributeError:
+                # paho-mqtt 1.x non ha CallbackAPIVersion
+                client = mqtt.Client(client_id=f"ha-sismasens-{self._norm_prefix}")
+
             client.username_pw_set(
                 username=self._norm_prefix,
                 password=self._cloud_token,
