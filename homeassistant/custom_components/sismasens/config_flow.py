@@ -81,7 +81,7 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={
                 "example": "mi-001",
-                "doc_url": "https://github.com/sismasens/sismasens",
+                "doc_url": "https://github.com/luckehall/sismasens",
             },
         )
 

@@ -17,7 +17,7 @@ esphome:
   external_components:
     - source:
         type: git
-        url: https://github.com/sismasens/sismasens
+        url: https://github.com/luckehall/sismasens
         ref: main
       components: [sismasens]
 

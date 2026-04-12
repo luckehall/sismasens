@@ -42,7 +42,7 @@ esphome run esphome/templates/mio-sensore.yaml
 
 **Via HACS (raccomandato):**
 1. Apri HACS → Integrazioni → Menu ⋮ → Repository personalizzati
-2. Aggiungi `https://github.com/sismasens/sismasens` — categoria `Integration`
+2. Aggiungi `https://github.com/luckehall/sismasens` — categoria `Integration`
 3. Installa "SISMASENS Seismic Monitor"
 4. Riavvia HA → Impostazioni → Integrazioni → Aggiungi → SISMASENS
 
