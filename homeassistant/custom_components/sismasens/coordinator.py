@@ -110,13 +110,21 @@ class SismasensCoordinator(DataUpdateCoordinator):
 
         self._sync_state(entity_id, new_state)
 
-        # Rileva fine terremoto: binary_sensor earthquake passa da on → off
+        # Rileva fine terremoto: sensor numerico earthquake passa da >0 → 0
         earthquake_entity = self._entity_id("earthquake")
+        if entity_id == earthquake_entity and old_state is not None:
+            try:
+                old_active = float(old_state.state) > 0
+                new_active = float(new_state.state) > 0
+            except (ValueError, TypeError):
+                old_active = new_active = False
+        else:
+            old_active = new_active = False
         if (
             entity_id == earthquake_entity
             and old_state is not None
-            and old_state.state == "on"
-            and new_state.state == "off"
+            and old_active
+            and not new_active
         ):
             _LOGGER.info("SISMASENS: terremoto terminato, raccolta dati evento")
             self.data["last_event_time"] = datetime.now(timezone.utc).isoformat()
@@ -134,11 +142,11 @@ class SismasensCoordinator(DataUpdateCoordinator):
             if val in ("unknown", "unavailable"):
                 return
             if entity_id == self._entity_id("earthquake"):
-                self.data["earthquake"] = val == "on"
+                self.data["earthquake"] = float(val) > 0
             elif entity_id == self._entity_id("collapse"):
-                self.data["collapse"] = val == "on"
+                self.data["collapse"] = float(val) > 0
             elif entity_id == self._entity_id("shutoff"):
-                self.data["shutoff"] = val == "on"
+                self.data["shutoff"] = float(val) > 0
             elif entity_id == self._entity_id("last_si"):
                 self.data["last_si"] = float(val)
             elif entity_id == self._entity_id("last_pga"):

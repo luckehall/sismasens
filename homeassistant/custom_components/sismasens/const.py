@@ -22,10 +22,10 @@ CLOUD_TOPIC_EVENTS = "sismasens/events/{sensor_id}"
 # es. prefix="mi-001" → norm="mi_001"
 #   binary_sensor.sismasens_mi_001_mi_001_earthquake
 ESPHOME_ENTITIES = {
-    # Binary sensors (stato on/off)
-    "earthquake":     "binary_sensor.sismasens_{prefix}_{prefix}_earthquake",
-    "collapse":       "binary_sensor.sismasens_{prefix}_{prefix}_collapse",
-    "shutoff":        "binary_sensor.sismasens_{prefix}_{prefix}_shutoff",
+    # Sensori numerici 0/1 — earthquake/collapse/shutoff sono sensor::Sensor in ESPHome
+    "earthquake":     "sensor.sismasens_{prefix}_{prefix}_earthquake",
+    "collapse":       "sensor.sismasens_{prefix}_{prefix}_collapse",
+    "shutoff":        "sensor.sismasens_{prefix}_{prefix}_shutoff",
     # Sensori numerici — valori post-evento
     "last_si":        "sensor.sismasens_{prefix}_{prefix}_last_si",
     "last_pga":       "sensor.sismasens_{prefix}_{prefix}_last_pga",
