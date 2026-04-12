@@ -1,0 +1,143 @@
+title: "SISMASENS — Test Integration"
+views:
+  - title: "Test mi-001"
+    path: sismasens-test
+    icon: mdi:seismograph
+    type: sections
+    sections:
+
+      # ── STATO ALLARMI ──────────────────────────────────────────────────────
+      - type: grid
+        column_span: 3
+        title: "Stato allarmi"
+        cards:
+          - type: entity
+            entity: binary_sensor.sismasens_mi_001_earthquake
+            name: Earthquake
+            icon: mdi:earth
+            state_color: true
+          - type: entity
+            entity: binary_sensor.sismasens_mi_001_collapse
+            name: Collapse
+            icon: mdi:home-collapse
+            state_color: true
+          - type: entity
+            entity: binary_sensor.sismasens_mi_001_shutoff
+            name: Shutoff
+            icon: mdi:alert-circle
+            state_color: true
+
+      # ── VALORI POST-EVENTO (last) ──────────────────────────────────────────
+      - type: grid
+        column_span: 3
+        title: "Ultimo evento (last)"
+        cards:
+          - type: sensor
+            entity: sensor.sismasens_mi_001_last_m
+            name: Last M
+            icon: mdi:pulse
+            graph: none
+          - type: sensor
+            entity: sensor.sismasens_mi_001_last_si
+            name: Last SI (cm/s)
+            icon: mdi:sine-wave
+            graph: none
+          - type: sensor
+            entity: sensor.sismasens_mi_001_last_pga
+            name: Last PGA (g)
+            icon: mdi:chart-bell-curve
+            graph: none
+          - type: sensor
+            entity: sensor.sismasens_mi_001_last_temp
+            name: Last Temp (°C)
+            icon: mdi:thermometer
+            graph: none
+
+      # ── VALORI ISTANTANEI (inst) ───────────────────────────────────────────
+      - type: grid
+        column_span: 3
+        title: "Valori istantanei (durante evento)"
+        cards:
+          - type: sensor
+            entity: sensor.sismasens_mi_001_inst_m
+            name: Inst M
+            icon: mdi:pulse
+            graph: none
+          - type: sensor
+            entity: sensor.sismasens_mi_001_inst_si
+            name: Inst SI (cm/s)
+            icon: mdi:sine-wave
+            graph: none
+          - type: sensor
+            entity: sensor.sismasens_mi_001_inst_pga
+            name: Inst PGA (g)
+            icon: mdi:chart-bell-curve
+            graph: none
+
+      # ── ENTITÀ ESPHOME CORRISPONDENTI (confronto) ─────────────────────────
+      - type: grid
+        column_span: 3
+        title: "Entità ESPHome originali (confronto)"
+        cards:
+          - type: entities
+            title: "Verifica coerenza valori"
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.sismasens_mi_001_mi_001_earthquake
+                name: "ESPHome — Earthquake"
+              - entity: sensor.sismasens_mi_001_mi_001_last_m
+                name: "ESPHome — Last M"
+              - entity: sensor.sismasens_mi_001_mi_001_last_si
+                name: "ESPHome — Last SI"
+              - entity: sensor.sismasens_mi_001_mi_001_last_pga
+                name: "ESPHome — Last PGA"
+              - entity: sensor.sismasens_mi_001_mi_001_inst_m
+                name: "ESPHome — Inst M"
+              - entity: sensor.sismasens_mi_001_mi_001_inst_si
+                name: "ESPHome — Inst SI"
+              - entity: sensor.sismasens_mi_001_mi_001_inst_pga
+                name: "ESPHome — Inst PGA"
+
+      # ── DISPOSITIVO E CONTROLLI ────────────────────────────────────────────
+      - type: grid
+        column_span: 3
+        title: "Dispositivo e controlli"
+        cards:
+          - type: entities
+            title: "Info device"
+            show_header_toggle: false
+            entities:
+              - entity: sensor.sismasens_mi_001_mi_001_fw_version
+                name: Firmware
+                icon: mdi:tag-outline
+              - entity: sensor.sismasens_mi_001_mi_001_power_supply
+                name: Power Supply
+                icon: mdi:flash
+              - entity: sensor.sismasens_mi_001_mi_001_location
+                name: Location
+                icon: mdi:map-marker
+              - entity: sensor.sismasens_mi_001_mi_001_last_eartquake
+                name: Ultimo evento
+                icon: mdi:calendar-clock
+              - type: divider
+              - entity: button.sismasens_mi_001_btn_clear_sensor
+                name: "SISMASENS — Clear"
+                icon: mdi:delete-sweep
+                action_name: Esegui
+              - entity: button.sismasens_mi_001_btn_set
+                name: "SISMASENS — Set (D7S Reset)"
+                icon: mdi:cog
+                action_name: Esegui
+              - entity: button.sismasens_mi_001_btn_reboot
+                name: "SISMASENS — Reboot ESP32"
+                icon: mdi:restart
+                action_name: Esegui
+              - type: divider
+              - entity: button.sismasens_mi_001_mi_001_clear_sensor
+                name: "ESPHome — Clear (diretto)"
+                icon: mdi:delete-sweep
+                action_name: Esegui
+              - entity: button.sismasens_mi_001_mi_001_set
+                name: "ESPHome — Set (diretto)"
+                icon: mdi:cog
+                action_name: Esegui
