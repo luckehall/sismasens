@@ -53,6 +53,7 @@ class SismasensCoordinator(DataUpdateCoordinator):
         self._lon: float | None = None
 
         self._mqtt_client = None
+        self._mqtt_reconnecting = False
         self._unsub_state_listener = None
 
         # Stato corrente del sensore
@@ -232,24 +233,24 @@ class SismasensCoordinator(DataUpdateCoordinator):
             _LOGGER.info("SISMASENS: connesso al broker cloud %s", CLOUD_BROKER)
         except Exception as err:
             _LOGGER.error("SISMASENS: errore connessione MQTT cloud: %s — riprovo tra 60 s", err)
-            threading.Thread(target=self._reconnect_loop, daemon=True).start()
+            if not self._mqtt_reconnecting:
+                self._mqtt_reconnecting = True
+                threading.Thread(target=self._reconnect_loop, daemon=True).start()
 
     def _on_mqtt_disconnect(self, client, userdata, rc) -> None:
-        """Callback paho: connessione persa — avvia riconnessione."""
-        if rc != 0:
-            _LOGGER.warning("SISMASENS: connessione MQTT persa (rc=%s) — riprovo tra 60 s", rc)
+        """Callback paho: connessione persa — avvia riconnessione (una sola volta)."""
+        if rc != 0 and not self._mqtt_reconnecting:
+            self._mqtt_reconnecting = True
             self._mqtt_client = None
+            _LOGGER.warning("SISMASENS: connessione MQTT persa (rc=%s) — riprovo tra 60 s", rc)
             threading.Thread(target=self._reconnect_loop, daemon=True).start()
 
     def _reconnect_loop(self) -> None:
         """Thread di riconnessione: riprova ogni 60 s finché non ha successo."""
-        while True:
-            time.sleep(60)
-            if self._mqtt_client is not None:
-                return  # già riconnesso
-            _LOGGER.info("SISMASENS: tentativo di riconnessione al broker cloud")
-            self._connect_mqtt()
-            return
+        time.sleep(60)
+        _LOGGER.info("SISMASENS: tentativo di riconnessione al broker cloud")
+        self._mqtt_reconnecting = False
+        self._connect_mqtt()
 
     def _disconnect_mqtt(self) -> None:
         if self._mqtt_client:
