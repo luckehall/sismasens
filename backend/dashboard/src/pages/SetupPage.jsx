@@ -144,7 +144,7 @@ function MapPicker({ lat, lon, onChange }) {
       zoom={5}
       style={{ height: '100%', width: '100%', borderRadius: 8 }}
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
       <ClickHandler />
       {lat !== null && (
         <CircleMarker
