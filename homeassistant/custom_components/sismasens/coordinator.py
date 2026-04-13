@@ -43,13 +43,14 @@ class SismasensCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
         )
         self._config_entry = config_entry
-        self._prefix: str = config_entry.data[CONF_DEVICE_PREFIX]
+        # options sovrascrivono data (aggiornamenti via OptionsFlow)
+        cfg = {**config_entry.data, **config_entry.options}
+        self._prefix: str = cfg[CONF_DEVICE_PREFIX]
         self._norm_prefix: str = _normalize_prefix(self._prefix)
-        self._cloud_enabled: bool = config_entry.data.get(CONF_CLOUD_ENABLED, False)
-        self._cloud_token: str = config_entry.data.get(CONF_CLOUD_TOKEN, "")
-        # Coordinate statiche configurate al setup — non cambiano a runtime
-        self._lat: float | None = config_entry.data.get(CONF_LATITUDE)
-        self._lon: float | None = config_entry.data.get(CONF_LONGITUDE)
+        self._cloud_enabled: bool = cfg.get(CONF_CLOUD_ENABLED, False)
+        self._cloud_token: str = cfg.get(CONF_CLOUD_TOKEN, "")
+        self._lat: float | None = cfg.get(CONF_LATITUDE)
+        self._lon: float | None = cfg.get(CONF_LONGITUDE)
 
         self._mqtt_client = None
         self._unsub_state_listener = None

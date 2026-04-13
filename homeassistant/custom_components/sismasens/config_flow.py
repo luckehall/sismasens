@@ -151,6 +151,8 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
+        # options sovrascrivono data: prima la configurazione iniziale, poi le modifiche
+        self._current = {**config_entry.data, **config_entry.options}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -164,19 +166,19 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_CLOUD_ENABLED,
-                        default=self._config_entry.data.get(CONF_CLOUD_ENABLED, False),
+                        default=self._current.get(CONF_CLOUD_ENABLED, False),
                     ): bool,
                     vol.Optional(
                         CONF_CLOUD_TOKEN,
-                        default=self._config_entry.data.get(CONF_CLOUD_TOKEN, ""),
+                        default=self._current.get(CONF_CLOUD_TOKEN, ""),
                     ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
                     vol.Optional(
                         CONF_LATITUDE,
-                        default=self._config_entry.data.get(CONF_LATITUDE),
+                        default=self._current.get(CONF_LATITUDE),
                     ): vol.Coerce(float),
                     vol.Optional(
                         CONF_LONGITUDE,
-                        default=self._config_entry.data.get(CONF_LONGITUDE),
+                        default=self._current.get(CONF_LONGITUDE),
                     ): vol.Coerce(float),
                 }
             ),
