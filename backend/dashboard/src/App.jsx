@@ -1,8 +1,10 @@
+import { Routes, Route, Link } from 'react-router-dom'
 import SeismicMap from './components/SeismicMap'
 import EventList from './components/EventList'
+import SetupPage from './pages/SetupPage'
 import { useEvents } from './hooks/useEvents'
 
-export default function App() {
+function MapPage() {
   const { events, sensors, connected } = useEvents()
 
   return (
@@ -13,7 +15,6 @@ export default function App() {
       height: '100vh',
       background: '#0f172a',
     }}>
-      {/* Header */}
       <header style={{
         gridColumn: '1 / -1',
         padding: '10px 20px',
@@ -26,17 +27,26 @@ export default function App() {
         <span style={{ fontSize: 20 }}>🌍</span>
         <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 1 }}>SISMASENS</span>
         <span style={{ color: '#64748b', fontSize: 13 }}>Monitoraggio Sismico Distribuito</span>
-        <span style={{ marginLeft: 'auto', color: '#64748b', fontSize: 12 }}>
-          {sensors.length} sensori attivi
+        <Link to="/setup" style={{
+          marginLeft: 'auto',
+          fontSize: 12,
+          color: '#38bdf8',
+          textDecoration: 'none',
+          padding: '4px 10px',
+          border: '1px solid #38bdf8',
+          borderRadius: 4,
+        }}>
+          + Registra sensore
+        </Link>
+        <span style={{ color: '#64748b', fontSize: 12 }}>
+          {sensors.length} attivi
         </span>
       </header>
 
-      {/* Mappa */}
       <main style={{ position: 'relative', overflow: 'hidden' }}>
         <SeismicMap events={events} sensors={sensors} />
       </main>
 
-      {/* Pannello laterale eventi */}
       <aside style={{
         background: '#1e293b',
         borderLeft: '1px solid #334155',
@@ -53,5 +63,14 @@ export default function App() {
         <EventList events={events} connected={connected} />
       </aside>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MapPage />} />
+      <Route path="/setup" element={<SetupPage />} />
+    </Routes>
   )
 }
