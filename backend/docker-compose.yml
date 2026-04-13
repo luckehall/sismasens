@@ -89,8 +89,10 @@ services:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
       - ./broker/emqx/acl.conf:/opt/emqx/etc/acl.conf:ro
-      - /etc/letsencrypt/live/sismasens.iotzator.com/fullchain.pem:/etc/emqx/certs/fullchain.pem:ro
-      - /etc/letsencrypt/live/sismasens.iotzator.com/privkey.pem:/etc/emqx/certs/privkey.pem:ro
+      # Cert copiati da /etc/letsencrypt con permessi 644 (EMQX gira come uid 1000)
+      # Aggiornati automaticamente da /etc/letsencrypt/renewal-hooks/deploy/sismasens-emqx.sh
+      - ./broker/emqx/certs/fullchain.pem:/etc/emqx/certs/fullchain.pem:ro
+      - ./broker/emqx/certs/privkey.pem:/etc/emqx/certs/privkey.pem:ro
     healthcheck:
       test: ["CMD", "emqx", "ping"]
       interval: 15s
