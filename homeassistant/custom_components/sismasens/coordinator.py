@@ -6,6 +6,7 @@ import logging
 import re
 import ssl
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -201,36 +202,54 @@ class SismasensCoordinator(DataUpdateCoordinator):
     # ------------------------------------------------------------------
 
     def _connect_mqtt(self) -> None:
-        """Connette al broker MQTT cloud (blocca su thread executor)."""
-        try:
-            import paho.mqtt.client as mqtt
+        """Connette al broker MQTT cloud (blocca su thread executor).
+        Riprova automaticamente ogni 60 s in caso di errore.
+        """
+        import paho.mqtt.client as mqtt
 
-            # Compatibile con paho-mqtt 2.x (CallbackAPIVersion) e 1.x
+        try:
+            client_id = f"ha-sismasens-{self._norm_prefix}"
             try:
                 client = mqtt.Client(
                     callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
-                    client_id=f"ha-sismasens-{self._norm_prefix}",
+                    client_id=client_id,
                 )
             except AttributeError:
-                # paho-mqtt 1.x non ha CallbackAPIVersion
-                client = mqtt.Client(client_id=f"ha-sismasens-{self._norm_prefix}")
+                client = mqtt.Client(client_id=client_id)
 
-            client.username_pw_set(
-                username=self._prefix,
-                password=self._cloud_token,
-            )
+            client.username_pw_set(username=self._prefix, password=self._cloud_token)
+
             tls_ctx = ssl.create_default_context()
-            # Python 3.10+ è strict su TLS 1.3 close_notify — ignora EOF inatteso
-            # per compatibilità con broker che chiudono la connessione senza close_notify
             if hasattr(ssl, "OP_IGNORE_UNEXPECTED_EOF"):
                 tls_ctx.options |= ssl.OP_IGNORE_UNEXPECTED_EOF
             client.tls_set_context(tls_ctx)
+
+            client.on_disconnect = self._on_mqtt_disconnect
+
             client.connect(CLOUD_BROKER, CLOUD_PORT, keepalive=60)
             client.loop_start()
             self._mqtt_client = client
             _LOGGER.info("SISMASENS: connesso al broker cloud %s", CLOUD_BROKER)
         except Exception as err:
-            _LOGGER.error("SISMASENS: errore connessione MQTT cloud: %s", err)
+            _LOGGER.error("SISMASENS: errore connessione MQTT cloud: %s — riprovo tra 60 s", err)
+            threading.Thread(target=self._reconnect_loop, daemon=True).start()
+
+    def _on_mqtt_disconnect(self, client, userdata, rc) -> None:
+        """Callback paho: connessione persa — avvia riconnessione."""
+        if rc != 0:
+            _LOGGER.warning("SISMASENS: connessione MQTT persa (rc=%s) — riprovo tra 60 s", rc)
+            self._mqtt_client = None
+            threading.Thread(target=self._reconnect_loop, daemon=True).start()
+
+    def _reconnect_loop(self) -> None:
+        """Thread di riconnessione: riprova ogni 60 s finché non ha successo."""
+        while True:
+            time.sleep(60)
+            if self._mqtt_client is not None:
+                return  # già riconnesso
+            _LOGGER.info("SISMASENS: tentativo di riconnessione al broker cloud")
+            self._connect_mqtt()
+            return
 
     def _disconnect_mqtt(self) -> None:
         if self._mqtt_client:
