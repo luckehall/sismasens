@@ -111,33 +111,9 @@ cp -r custom_components/sismasens /config/custom_components/sismasens
 
 ---
 
-## 3. Backend cloud (VPS)
+## 3. Dashboard pubblica
 
-Il backend è ospitato nel submodulo `backend/` ([luckehall/sismasens-backend](https://github.com/luckehall/sismasens-backend)).  
-Documentazione completa: vedi [`backend/README.md`](backend/README.md).
-
-Il backend richiede un VPS con **Ubuntu 22.04**, **Apache2** e **Certbot** già installati.
-
-### Primo deploy
-
-```bash
-git clone --recurse-submodules https://github.com/luckehall/sismasens /opt/sismasens
-sudo bash /opt/sismasens/backend/deploy.sh
-# → installa Docker, crea .env da .env.example, si ferma
-
-nano /opt/sismasens/backend/.env   # inserisci password reali
-
-sudo bash /opt/sismasens/backend/deploy.sh --start
-# → ottiene certificato TLS, configura Apache, avvia container
-```
-
-### Aggiornamento
-
-```bash
-cd /opt/sismasens && git pull origin main
-git submodule update --remote --merge
-cd backend && docker compose up -d --build
-```
+La mappa interattiva con tutti gli eventi sismici registrati dalla rete SISMASENS è disponibile su [sismasens.iotzator.com](https://sismasens.iotzator.com).
 
 ---
 
