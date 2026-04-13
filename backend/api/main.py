@@ -19,6 +19,13 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "SELECT create_hypertable('seismic_events', 'time', if_not_exists => TRUE);"
         ))
+        # Migrazione idempotente: aggiunge colonne 2FA se non esistono
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(64);"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE;"
+        ))
     yield
 
 

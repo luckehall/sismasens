@@ -2,6 +2,8 @@ import { Routes, Route, Link } from 'react-router-dom'
 import SeismicMap from './components/SeismicMap'
 import EventList from './components/EventList'
 import SetupPage from './pages/SetupPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import { useEvents } from './hooks/useEvents'
 
 function MapPage() {
@@ -27,7 +29,7 @@ function MapPage() {
         <span style={{ fontSize: 20 }}>🌍</span>
         <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 1 }}>SISMASENS</span>
         <span style={{ color: '#64748b', fontSize: 13 }}>Monitoraggio Sismico Distribuito</span>
-        <Link to="/setup" style={{
+        <Link to="/login" style={{
           marginLeft: 'auto',
           fontSize: 12,
           color: '#38bdf8',
@@ -70,6 +72,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MapPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/setup" element={<SetupPage />} />
     </Routes>
   )

@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, CircleMarker, useMapEvents } from 'react-leaflet'
+import { getToken, clearToken, isAuthenticated } from '../hooks/useAuth'
 
 const API = import.meta.env.VITE_API_BASE || 'https://sismasens.iotzator.com/api'
 
@@ -29,6 +30,7 @@ const S = {
     maxWidth: 1100,
     margin: '0 auto',
     width: '100%',
+    boxSizing: 'border-box',
   },
   card: {
     background: '#1e293b',
@@ -64,10 +66,6 @@ const S = {
     fontSize: 15,
     fontWeight: 600,
     cursor: 'pointer',
-  },
-  btnDisabled: {
-    background: '#334155',
-    cursor: 'not-allowed',
   },
   error: {
     marginTop: 14,
@@ -131,18 +129,29 @@ function MapPicker({ lat, lon, onChange }) {
 }
 
 export default function SetupPage() {
-  const [form, setForm] = useState({
-    email: '', password: '', sensor_id: '', name: '', location: '',
-  })
+  const navigate = useNavigate()
+  const [form, setForm] = useState({ sensor_id: '', name: '', location: '' })
   const [lat, setLat] = useState(null)
   const [lon, setLon] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [token, setToken] = useState(null)
+  const [token, setMqttToken] = useState(null)
   const [copied, setCopied] = useState(false)
+
+  // Redirect se non autenticato
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login')
+    }
+  }, [navigate])
 
   function set(field) {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  function logout() {
+    clearToken()
+    navigate('/login')
   }
 
   async function handleSubmit(e) {
@@ -151,29 +160,10 @@ export default function SetupPage() {
     setError(null)
     setLoading(true)
 
+    const accessToken = getToken()
+
     try {
-      // 1. Registrazione account
-      const regRes = await fetch(`${API}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.email, password: form.password }),
-      })
-      if (!regRes.ok) {
-        const d = await regRes.json()
-        throw new Error(d.detail || 'Errore registrazione account')
-      }
-
-      // 2. Login
-      const loginRes = await fetch(`${API}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.email, password: form.password }),
-      })
-      const loginData = await loginRes.json()
-      if (!loginRes.ok) throw new Error(loginData.detail || 'Errore login')
-      const accessToken = loginData.access_token
-
-      // 3. Registra sensore
+      // 1. Registra sensore
       const sensorRes = await fetch(`${API}/sensors/`, {
         method: 'POST',
         headers: {
@@ -190,10 +180,11 @@ export default function SetupPage() {
       })
       if (!sensorRes.ok) {
         const d = await sensorRes.json()
+        if (sensorRes.status === 401) { clearToken(); navigate('/login'); return }
         throw new Error(d.detail || 'Errore registrazione sensore')
       }
 
-      // 4. Genera token MQTT
+      // 2. Genera token MQTT
       const tokenRes = await fetch(`${API}/sensors/${form.sensor_id}/token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -201,7 +192,7 @@ export default function SetupPage() {
       const tokenData = await tokenRes.json()
       if (!tokenRes.ok) throw new Error(tokenData.detail || 'Errore generazione token')
 
-      setToken(tokenData.mqtt_token)
+      setMqttToken(tokenData.mqtt_token)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -220,10 +211,15 @@ export default function SetupPage() {
       <header style={S.header}>
         <span style={{ fontSize: 20 }}>🌍</span>
         <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 1 }}>SISMASENS</span>
-        <span style={{ color: '#64748b', fontSize: 13 }}>Registra il tuo sensore</span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>Registra sensore</span>
         <Link to="/" style={{ marginLeft: 'auto', color: '#64748b', fontSize: 13, textDecoration: 'none' }}>
-          ← Torna alla mappa
+          ← Mappa
         </Link>
+        <button onClick={logout}
+          style={{ background: 'none', border: '1px solid #334155', color: '#64748b',
+                   borderRadius: 4, padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}>
+          Esci
+        </button>
       </header>
 
       <div style={S.body}>
@@ -231,17 +227,11 @@ export default function SetupPage() {
         <div style={S.card}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Nuovo sensore</h2>
           <p style={{ fontSize: 13, color: '#64748b' }}>
-            Crea un account, registra il sensore e ottieni il token MQTT da incollare in Home Assistant.
+            Registra il sensore e ottieni il token MQTT da incollare in Home Assistant.
           </p>
 
           {!token ? (
             <form onSubmit={handleSubmit}>
-              <label style={S.label}>Email</label>
-              <input style={S.input} type="email" required value={form.email} onChange={set('email')} />
-
-              <label style={S.label}>Password</label>
-              <input style={S.input} type="password" required minLength={8} value={form.password} onChange={set('password')} />
-
               <label style={S.label}>Sensor ID <span style={{ color: '#64748b' }}>(es. mi-001)</span></label>
               <input style={S.input} type="text" required placeholder="mi-001"
                 value={form.sensor_id} onChange={set('sensor_id')} />
@@ -263,7 +253,7 @@ export default function SetupPage() {
 
               <button
                 type="submit"
-                style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
+                style={{ ...S.btn, ...(loading ? { background: '#334155', cursor: 'not-allowed' } : {}) }}
                 disabled={loading}
               >
                 {loading ? 'Registrazione in corso...' : 'Registra e ottieni token MQTT'}
@@ -277,7 +267,7 @@ export default function SetupPage() {
               <label style={{ ...S.label, marginTop: 20 }}>Token MQTT — incolla in Home Assistant</label>
               <div style={S.tokenBox}>{token}</div>
               <button style={S.copyBtn} onClick={copyToken}>
-                {copied ? '✓ Copiato!' : '📋 Copia token'}
+                {copied ? '✓ Copiato!' : 'Copia token'}
               </button>
               <div style={{ marginTop: 20, fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>
                 <strong style={{ color: '#94a3b8' }}>Come usarlo in HA:</strong><br />
@@ -286,9 +276,12 @@ export default function SetupPage() {
                 3. Abilita "Cloud publishing"<br />
                 4. Incolla il token nel campo <em>Token MQTT</em>
               </div>
-              <Link to="/" style={{ display: 'block', marginTop: 20, color: '#38bdf8', fontSize: 13 }}>
-                ← Vai alla mappa
-              </Link>
+              <button style={{ ...S.btn, marginTop: 20 }} onClick={() => {
+                setMqttToken(null); setForm({ sensor_id: '', name: '', location: '' })
+                setLat(null); setLon(null)
+              }}>
+                Registra un altro sensore
+              </button>
             </div>
           )}
         </div>

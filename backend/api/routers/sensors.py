@@ -1,35 +1,16 @@
 """Router sensori: registrazione, profilo e generazione token MQTT."""
 from fastapi import APIRouter, Depends, HTTPException, status
-from jose import JWTError
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from ..core.database import get_db
-from ..core.security import decode_token, create_mqtt_token, hash_password
+from ..core.deps import get_current_user
+from ..core.security import create_mqtt_token, hash_password
 from ..models.sensor import Sensor
 from ..models.user import User
 
 router = APIRouter(prefix="/sensors", tags=["sensors"])
-bearer = HTTPBearer()
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    try:
-        payload = decode_token(credentials.credentials)
-        user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=401, detail="Token non valido")
-
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="Utente non trovato")
-    return user
 
 
 class SensorCreate(BaseModel):
