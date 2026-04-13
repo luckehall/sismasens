@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 import { setToken } from '../hooks/useAuth'
 
 const API = import.meta.env.VITE_API_BASE || 'https://sismasens.iotzator.com/api'
@@ -96,6 +97,26 @@ export default function LoginPage() {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
   }
 
+  async function handleGoogleSuccess({ credential }) {
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Errore autenticazione Google')
+      setToken(data.access_token)
+      navigate('/setup')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleCredentials(e) {
     e.preventDefault()
     setError(null)
@@ -179,6 +200,23 @@ export default function LoginPage() {
                   {loading ? 'Accesso in corso...' : 'Accedi'}
                 </button>
               </form>
+
+              <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 1, background: '#334155' }} />
+                <span style={{ fontSize: 12, color: '#475569' }}>oppure</span>
+                <div style={{ flex: 1, height: 1, background: '#334155' }} />
+              </div>
+
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError('Autenticazione Google fallita')}
+                  theme="filled_black"
+                  shape="rectangular"
+                  text="signin_with"
+                  locale="it"
+                />
+              </div>
 
               <p style={{ marginTop: 20, fontSize: 13, color: '#64748b', textAlign: 'center' }}>
                 Non hai un account?{' '}

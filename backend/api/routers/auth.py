@@ -1,10 +1,15 @@
-"""Router autenticazione: registrazione, login e gestione 2FA."""
+"""Router autenticazione: registrazione, login, 2FA e Google OAuth."""
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 from jose import JWTError
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.deps import get_current_user
 from ..core.security import (
@@ -73,7 +78,9 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(body.password, user.hashed_password):
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=401, detail="Credenziali non valide")
+    if not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenziali non valide")
 
     if user.totp_enabled:
@@ -81,6 +88,53 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         return LoginResponse(requires_2fa=True, temp_token=create_temp_token(user.id))
 
     return LoginResponse(access_token=create_access_token(user.id))
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+class GoogleAuthRequest(BaseModel):
+    credential: str  # ID token JWT restituito da @react-oauth/google
+
+
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    """Verifica l'ID token Google e restituisce un access_token SISMASENS."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=501, detail="Google OAuth non configurato")
+
+    try:
+        loop = asyncio.get_event_loop()
+        idinfo = await loop.run_in_executor(
+            None,
+            lambda: google_id_token.verify_oauth2_token(
+                body.credential,
+                google_requests.Request(),
+                settings.google_client_id,
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=f"Token Google non valido: {exc}")
+
+    google_id: str = idinfo["sub"]
+    email: str = idinfo["email"]
+
+    # 1. Cerca per google_id
+    result = await db.execute(select(User).where(User.google_id == google_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # 2. Cerca per email (account locale esistente) → collega google_id
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user:
+            user.google_id = google_id
+        else:
+            # 3. Nuovo utente via Google
+            user = User(email=email, google_id=google_id, hashed_password=None)
+            db.add(user)
+
+    await db.commit()
+    return TokenResponse(access_token=create_access_token(user.id))
 
 
 @router.post("/2fa/verify", response_model=TokenResponse)

@@ -26,6 +26,16 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE;"
         ))
+        # Migrazione idempotente: Google OAuth
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(128);"
+        ))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users (google_id) WHERE google_id IS NOT NULL;"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;"
+        ))
     yield
 
 

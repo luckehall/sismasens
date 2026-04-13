@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # MQTT token (separato dal JWT di accesso API)
     mqtt_token_secret: str = "change-me-mqtt-secret"
 
+    # Google OAuth
+    google_client_id: str = ""
+
     # CORS
     allowed_origins: list[str] = ["https://sismasens.iotzator.com", "http://localhost:3000"]
 

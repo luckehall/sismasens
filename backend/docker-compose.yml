@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://sismasens:${POSTGRES_PASSWORD:-sismasens}@postgres:5432/sismasens
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       MQTT_TOKEN_SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       ALLOWED_ORIGINS: '["https://sismasens.iotzator.com","http://localhost:3000"]'
     depends_on:
       postgres:
@@ -106,6 +107,8 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     container_name: sismasens-dashboard
     restart: unless-stopped
     ports:
