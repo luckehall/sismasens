@@ -1,0 +1,12 @@
+{
+  "domain": "sismasens",
+  "name": "SISMASENS Seismic Monitor",
+  "version": "1.0.0",
+  "documentation": "https://github.com/luckehall/sismasens",
+  "issue_tracker": "https://github.com/luckehall/sismasens/issues",
+  "codeowners": ["@luckehall"],
+  "requirements": [],
+  "dependencies": [],
+  "iot_class": "local_push",
+  "config_flow": true
+}
