@@ -59,7 +59,7 @@ export default function SeismicMap({ events, sensors }) {
             {e.location}<br />
             SI: {e.si?.toFixed(2)} cm/s<br />
             PGA: {e.pga?.toFixed(4)} g<br />
-            <small>{new Date(e.time).toLocaleString('it-IT')}</small><br />
+            <small>{(() => { const d = new Date(e.time ?? e.timestamp); return isNaN(d) ? '—' : d.toLocaleString('it-IT') })()}</small><br />
             <small style={{ color: '#94a3b8' }}>{e.sensor_id}</small>
           </Popup>
         </CircleMarker>

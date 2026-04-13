@@ -31,9 +31,11 @@ async def broadcast_event(event_data: dict[str, Any]) -> None:
 @router.post("/internal/broadcast")
 async def internal_broadcast(request: Request):
     """Endpoint interno: l'ingestor chiama questo per fare broadcast ai WebSocket.
-    Accessibile solo dalla rete Docker (non esposto via Apache proxy su /api/).
+    Normalizza il campo 'timestamp' → 'time' per coerenza con il REST API.
     """
     data = await request.json()
+    if "timestamp" in data and "time" not in data:
+        data["time"] = data.pop("timestamp")
     await broadcast_event(data)
     return {"ok": True}
 

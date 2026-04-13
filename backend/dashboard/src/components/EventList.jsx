@@ -37,6 +37,13 @@ export default function EventList({ events, connected }) {
         )}
         {events.map((e, i) => {
           const { label, color } = magnitude_label(e.magnitude)
+          const ts = new Date(e.time ?? e.timestamp)
+          const isToday = ts.toDateString() === new Date().toDateString()
+          const timeStr = isNaN(ts)
+            ? '—'
+            : isToday
+              ? ts.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+              : ts.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
           return (
             <div key={i} style={{
               padding: '10px 16px',
@@ -46,7 +53,7 @@ export default function EventList({ events, connected }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                 <span style={{ fontWeight: 600, color }}>M {e.magnitude?.toFixed(2)} — {label}</span>
                 <span style={{ color: '#64748b', fontSize: 11 }}>
-                  {new Date(e.time).toLocaleTimeString('it-IT')}
+                  {timeStr}
                 </span>
               </div>
               <div style={{ color: '#94a3b8' }}>{e.location}</div>
