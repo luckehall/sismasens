@@ -3,7 +3,7 @@ import asyncio
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,16 @@ async def broadcast_event(event_data: dict[str, Any]) -> None:
             dead.append(ws)
     for ws in dead:
         _ws_clients.remove(ws)
+
+
+@router.post("/internal/broadcast")
+async def internal_broadcast(request: Request):
+    """Endpoint interno: l'ingestor chiama questo per fare broadcast ai WebSocket.
+    Accessibile solo dalla rete Docker (non esposto via Apache proxy su /api/).
+    """
+    data = await request.json()
+    await broadcast_event(data)
+    return {"ok": True}
 
 
 @router.get("/recent")
