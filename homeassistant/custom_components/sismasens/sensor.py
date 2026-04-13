@@ -25,11 +25,11 @@ async def async_setup_entry(
     prefix = entry.data["device_prefix"]
 
     entities = [
-        SismasensSensor(coordinator, prefix, "last_si",    "Last SI",    "cm/s",  SensorStateClass.MEASUREMENT, SensorDeviceClass.SPEED),
+        SismasensSensor(coordinator, prefix, "last_si",    "Last SI",    "cm/s",  SensorStateClass.MEASUREMENT, None),
         SismasensSensor(coordinator, prefix, "last_pga",   "Last PGA",   "g",     SensorStateClass.MEASUREMENT, None),
         SismasensSensor(coordinator, prefix, "last_temp",  "Last Temp",  "°C",    SensorStateClass.MEASUREMENT, SensorDeviceClass.TEMPERATURE),
         SismasensSensor(coordinator, prefix, "last_mag",   "Last M",     None,    SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "inst_si",    "Inst SI",    "cm/s",  SensorStateClass.MEASUREMENT, SensorDeviceClass.SPEED),
+        SismasensSensor(coordinator, prefix, "inst_si",    "Inst SI",    "cm/s",  SensorStateClass.MEASUREMENT, None),
         SismasensSensor(coordinator, prefix, "inst_pga",   "Inst PGA",   "g",     SensorStateClass.MEASUREMENT, None),
         SismasensSensor(coordinator, prefix, "inst_mag",   "Inst M",     None,    SensorStateClass.MEASUREMENT, None),
     ]
