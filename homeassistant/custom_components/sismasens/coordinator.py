@@ -196,6 +196,10 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 password=self._cloud_token,
             )
             tls_ctx = ssl.create_default_context()
+            # Python 3.10+ è strict su TLS 1.3 close_notify — ignora EOF inatteso
+            # per compatibilità con broker che chiudono la connessione senza close_notify
+            if hasattr(ssl, "OP_IGNORE_UNEXPECTED_EOF"):
+                tls_ctx.options |= ssl.OP_IGNORE_UNEXPECTED_EOF
             client.tls_set_context(tls_ctx)
             client.connect(CLOUD_BROKER, CLOUD_PORT, keepalive=60)
             client.loop_start()
