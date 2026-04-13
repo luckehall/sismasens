@@ -7,13 +7,12 @@ VERSION = "1.0.0"
 CONF_DEVICE_PREFIX = "device_prefix"
 CONF_CLOUD_TOKEN = "cloud_token"
 CONF_CLOUD_ENABLED = "cloud_enabled"
-CONF_LATITUDE = "latitude"
-CONF_LONGITUDE = "longitude"
 
 # MQTT cloud
 CLOUD_BROKER = "sismasens.iotzator.com"
 CLOUD_PORT = 8883  # MQTT over TLS
 CLOUD_TOPIC_EVENTS = "sismasens/events/{sensor_id}"
+CLOUD_API_SENSORS_PUBLIC = "https://sismasens.iotzator.com/api/sensors/public"
 
 # Entity ID delle entità ESPHome generate in HA.
 # Il device ESPHome si chiama "sismasens-{prefix}" e le entità

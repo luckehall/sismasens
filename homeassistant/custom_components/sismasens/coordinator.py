@@ -18,11 +18,10 @@ from .const import (
     CONF_DEVICE_PREFIX,
     CONF_CLOUD_TOKEN,
     CONF_CLOUD_ENABLED,
-    CONF_LATITUDE,
-    CONF_LONGITUDE,
     CLOUD_BROKER,
     CLOUD_PORT,
     CLOUD_TOPIC_EVENTS,
+    CLOUD_API_SENSORS_PUBLIC,
     ESPHOME_ENTITIES,
 )
 
@@ -49,8 +48,8 @@ class SismasensCoordinator(DataUpdateCoordinator):
         self._norm_prefix: str = _normalize_prefix(self._prefix)
         self._cloud_enabled: bool = cfg.get(CONF_CLOUD_ENABLED, False)
         self._cloud_token: str = cfg.get(CONF_CLOUD_TOKEN, "")
-        self._lat: float | None = cfg.get(CONF_LATITUDE)
-        self._lon: float | None = cfg.get(CONF_LONGITUDE)
+        self._lat: float | None = None
+        self._lon: float | None = None
 
         self._mqtt_client = None
         self._unsub_state_listener = None
@@ -86,7 +85,31 @@ class SismasensCoordinator(DataUpdateCoordinator):
         _LOGGER.info("SISMASENS coordinator attivo per device '%s'", self._prefix)
 
         if self._cloud_enabled and self._cloud_token:
+            await self._fetch_coordinates()
             await self.hass.async_add_executor_job(self._connect_mqtt)
+
+    async def _fetch_coordinates(self) -> None:
+        """Recupera le coordinate del sensore dal backend pubblico."""
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(CLOUD_API_SENSORS_PUBLIC, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        sensors = await resp.json()
+                        for s in sensors:
+                            if s.get("sensor_id") == self._prefix:
+                                self._lat = s.get("lat")
+                                self._lon = s.get("lon")
+                                _LOGGER.info(
+                                    "SISMASENS: coordinate sensore '%s' → lat=%s lon=%s",
+                                    self._prefix, self._lat, self._lon,
+                                )
+                                return
+                        _LOGGER.warning(
+                            "SISMASENS: sensore '%s' non trovato nel backend pubblico", self._prefix
+                        )
+        except Exception as err:
+            _LOGGER.error("SISMASENS: errore recupero coordinate dal backend: %s", err)
 
     async def async_shutdown(self) -> None:
         """Ferma listener e disconnette MQTT."""

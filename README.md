@@ -89,7 +89,7 @@ cp -r custom_components/sismasens /config/custom_components/sismasens
 2. Inserisci il **prefisso device** (es. `mi-001`) — deve corrispondere al nome ESPHome (`sismasens-mi-001`)
 3. (Opzionale) Abilita la **pubblicazione cloud**:
    - Ottieni il token MQTT su [sismasens.iotzator.com/setup](https://sismasens.iotzator.com/setup)
-   - Inserisci token, latitudine e longitudine
+   - Inserisci il token — le coordinate vengono recuperate automaticamente dal backend
 
 ### Entità create dall'integrazione
 
