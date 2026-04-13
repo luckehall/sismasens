@@ -87,6 +87,44 @@ async def generate_mqtt_token(
     return {"mqtt_token": token, "sensor_id": sensor_id}
 
 
+@router.patch("/{sensor_id}/active", response_model=SensorResponse)
+async def toggle_active(
+    sensor_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Attiva o disattiva un sensore (revoca dalla mappa pubblica)."""
+    result = await db.execute(
+        select(Sensor).where(Sensor.sensor_id == sensor_id, Sensor.user_id == user.id)
+    )
+    sensor = result.scalar_one_or_none()
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensore non trovato")
+
+    sensor.active = not sensor.active
+    await db.commit()
+    await db.refresh(sensor)
+    return sensor
+
+
+@router.delete("/{sensor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sensor(
+    sensor_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina definitivamente un sensore."""
+    result = await db.execute(
+        select(Sensor).where(Sensor.sensor_id == sensor_id, Sensor.user_id == user.id)
+    )
+    sensor = result.scalar_one_or_none()
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensore non trovato")
+
+    await db.delete(sensor)
+    await db.commit()
+
+
 @router.get("/public", response_model=list[SensorResponse])
 async def list_public_sensors(db: AsyncSession = Depends(get_db)):
     """Lista sensori attivi (pubblica, per la dashboard)."""

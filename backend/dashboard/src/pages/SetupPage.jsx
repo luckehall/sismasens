@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, CircleMarker, useMapEvents } from 'react-leaflet'
 import { getToken, clearToken, isAuthenticated } from '../hooks/useAuth'
@@ -97,6 +97,35 @@ const S = {
     cursor: 'pointer',
     fontSize: 13,
   },
+  sensorRow: {
+    background: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: 6,
+    padding: '12px 14px',
+    marginBottom: 8,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  badge: (active) => ({
+    fontSize: 11,
+    padding: '2px 8px',
+    borderRadius: 99,
+    background: active ? '#14532d' : '#1e1e2e',
+    color: active ? '#4ade80' : '#64748b',
+    border: `1px solid ${active ? '#22c55e' : '#334155'}`,
+    whiteSpace: 'nowrap',
+  }),
+  iconBtn: (color) => ({
+    background: 'none',
+    border: `1px solid ${color}`,
+    color,
+    borderRadius: 4,
+    padding: '3px 9px',
+    cursor: 'pointer',
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+  }),
 }
 
 function MapPicker({ lat, lon, onChange }) {
@@ -137,6 +166,8 @@ export default function SetupPage() {
   const [error, setError] = useState(null)
   const [token, setMqttToken] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [sensors, setSensors] = useState([])
+  const [actionLoading, setActionLoading] = useState(null) // sensor_id in elaborazione
 
   // Redirect se non autenticato
   useEffect(() => {
@@ -144,6 +175,50 @@ export default function SetupPage() {
       navigate('/login')
     }
   }, [navigate])
+
+  const loadSensors = useCallback(async () => {
+    const res = await fetch(`${API}/sensors/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (res.ok) setSensors(await res.json())
+  }, [])
+
+  useEffect(() => { loadSensors() }, [loadSensors])
+
+  async function handleToggleActive(sensorId) {
+    setActionLoading(sensorId + '_toggle')
+    const res = await fetch(`${API}/sensors/${sensorId}/active`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (res.ok) await loadSensors()
+    setActionLoading(null)
+  }
+
+  async function handleDelete(sensorId) {
+    if (!window.confirm(`Eliminare definitivamente il sensore "${sensorId}"? L'operazione non è reversibile.`)) return
+    setActionLoading(sensorId + '_delete')
+    const res = await fetch(`${API}/sensors/${sensorId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (res.ok) await loadSensors()
+    setActionLoading(null)
+  }
+
+  async function handleRegenToken(sensorId) {
+    setActionLoading(sensorId + '_token')
+    const res = await fetch(`${API}/sensors/${sensorId}/token`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setMqttToken(data.mqtt_token)
+      await loadSensors()
+    }
+    setActionLoading(null)
+  }
 
   function set(field) {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
@@ -193,6 +268,7 @@ export default function SetupPage() {
       if (!tokenRes.ok) throw new Error(tokenData.detail || 'Errore generazione token')
 
       setMqttToken(tokenData.mqtt_token)
+      await loadSensors()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -225,6 +301,53 @@ export default function SetupPage() {
       <div style={S.body}>
         {/* Form */}
         <div style={S.card}>
+          {/* Lista sensori esistenti */}
+          {sensors.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+                I tuoi sensori
+              </h3>
+              {sensors.map(s => (
+                <div key={s.sensor_id} style={S.sensorRow}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                      {s.sensor_id} · {s.location}
+                    </div>
+                  </div>
+                  <span style={S.badge(s.active)}>{s.active ? 'attivo' : 'revocato'}</span>
+                  <button
+                    style={S.iconBtn(s.active ? '#f97316' : '#22c55e')}
+                    disabled={actionLoading === s.sensor_id + '_toggle'}
+                    onClick={() => handleToggleActive(s.sensor_id)}
+                    title={s.active ? 'Revoca' : 'Riattiva'}
+                  >
+                    {actionLoading === s.sensor_id + '_toggle' ? '...' : s.active ? 'Revoca' : 'Riattiva'}
+                  </button>
+                  <button
+                    style={S.iconBtn('#38bdf8')}
+                    disabled={actionLoading === s.sensor_id + '_token'}
+                    onClick={() => handleRegenToken(s.sensor_id)}
+                    title="Rigenera token MQTT"
+                  >
+                    {actionLoading === s.sensor_id + '_token' ? '...' : 'Token'}
+                  </button>
+                  <button
+                    style={S.iconBtn('#ef4444')}
+                    disabled={actionLoading === s.sensor_id + '_delete'}
+                    onClick={() => handleDelete(s.sensor_id)}
+                    title="Elimina sensore"
+                  >
+                    {actionLoading === s.sensor_id + '_delete' ? '...' : 'Elimina'}
+                  </button>
+                </div>
+              ))}
+              <div style={{ height: 1, background: '#334155', margin: '20px 0' }} />
+            </div>
+          )}
+
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Nuovo sensore</h2>
           <p style={{ fontSize: 13, color: '#64748b' }}>
             Registra il sensore e ottieni il token MQTT da incollare in Home Assistant.
@@ -278,7 +401,7 @@ export default function SetupPage() {
               </div>
               <button style={{ ...S.btn, marginTop: 20 }} onClick={() => {
                 setMqttToken(null); setForm({ sensor_id: '', name: '', location: '' })
-                setLat(null); setLon(null)
+                setLat(null); setLon(null); loadSensors()
               }}>
                 Registra un altro sensore
               </button>
