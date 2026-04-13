@@ -36,8 +36,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    expose:
-      - "8000"
+    ports:
+      - "127.0.0.1:8002:8000"   # Esposto solo su loopback — Apache fa da proxy
 
   # ---------------------------------------------------------------------------
   # MQTT Ingestor
@@ -70,23 +70,28 @@ services:
     environment:
       EMQX_NAME: sismasens
       EMQX_HOST: sismasens.iotzator.com
-      # Auth JWT: EMQX verifica i token con il nostro secret
+      # Auth JWT
       EMQX_AUTHENTICATION__1__MECHANISM: jwt
       EMQX_AUTHENTICATION__1__FROM: password
-      EMQX_AUTHENTICATION__1__USE_JWKS: false
+      EMQX_AUTHENTICATION__1__USE_JWKS: "false"
       EMQX_AUTHENTICATION__1__SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
-      EMQX_AUTHENTICATION__1__SECRET_BASE64_ENCODED: false
+      EMQX_AUTHENTICATION__1__SECRET_BASE64_ENCODED: "false"
       EMQX_AUTHENTICATION__1__JWT_CLAIMS_CHECKS: "{}"
+      # TLS listener 8883 — usa i certificati Let's Encrypt montati dall'host
+      EMQX_LISTENERS__SSL__DEFAULT__ENABLED: "true"
+      EMQX_LISTENERS__SSL__DEFAULT__BIND: "0.0.0.0:8883"
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE: "/etc/emqx/certs/fullchain.pem"
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE: "/etc/emqx/certs/privkey.pem"
     ports:
-      - "1883:1883"    # MQTT
-      - "8883:8883"    # MQTT/TLS
-      - "8083:8083"    # MQTT/WS
-      - "8084:8084"    # MQTT/WSS
-      - "18083:18083"  # Dashboard admin EMQX
+      - "1883:1883"              # MQTT plain — per debug locale e ingestor fallback
+      - "8883:8883"              # MQTT/TLS — usato da Home Assistant
+      - "127.0.0.1:18083:18083" # Dashboard admin EMQX — solo loopback
     volumes:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
       - ./broker/emqx/acl.conf:/opt/emqx/etc/acl.conf:ro
+      - /etc/letsencrypt/live/sismasens.iotzator.com/fullchain.pem:/etc/emqx/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/sismasens.iotzator.com/privkey.pem:/etc/emqx/certs/privkey.pem:ro
     healthcheck:
       test: ["CMD", "emqx", "ping"]
       interval: 15s
@@ -94,7 +99,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Dashboard React (build statica servita da nginx)
+  # Dashboard React (build statica servita da nginx interno)
   # ---------------------------------------------------------------------------
   dashboard:
     build:
@@ -102,46 +107,10 @@ services:
       dockerfile: Dockerfile
     container_name: sismasens-dashboard
     restart: unless-stopped
-    expose:
-      - "80"
-
-  # ---------------------------------------------------------------------------
-  # Nginx — Reverse proxy + TLS (certbot)
-  # ---------------------------------------------------------------------------
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: sismasens-nginx
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - certbot_www:/var/www/certbot:ro
-      - certbot_conf:/etc/letsencrypt:ro
-    depends_on:
-      - api
-      - dashboard
-
-  # ---------------------------------------------------------------------------
-  # Certbot — rinnovo automatico TLS
-  # ---------------------------------------------------------------------------
-  certbot:
-    image: certbot/certbot
-    container_name: sismasens-certbot
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_conf:/etc/letsencrypt
-    entrypoint: >
-      /bin/sh -c "trap exit TERM;
-        while :; do
-          certbot renew --webroot -w /var/www/certbot --quiet;
-          sleep 12h & wait $${!};
-        done"
+      - "127.0.0.1:3001:80"    # Esposto solo su loopback — Apache fa da proxy
 
 volumes:
   postgres_data:
   emqx_data:
   emqx_log:
-  certbot_www:
-  certbot_conf:
