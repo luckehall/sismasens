@@ -193,7 +193,7 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 client = mqtt.Client(client_id=f"ha-sismasens-{self._norm_prefix}")
 
             client.username_pw_set(
-                username=self._norm_prefix,
+                username=self._prefix,
                 password=self._cloud_token,
             )
             tls_ctx = ssl.create_default_context()

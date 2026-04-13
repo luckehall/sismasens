@@ -8,11 +8,6 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.components.selector import (
-    TextSelector,
-    TextSelectorConfig,
-    TextSelectorType,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
@@ -126,9 +121,7 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CLOUD_ENABLED, default=False): bool,
-                    vol.Optional(CONF_CLOUD_TOKEN, default=""): TextSelector(
-                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
-                    ),
+                    vol.Optional(CONF_CLOUD_TOKEN, default=""): str,
                     vol.Optional(CONF_LATITUDE): vol.Coerce(float),
                     vol.Optional(CONF_LONGITUDE): vol.Coerce(float),
                 }
@@ -151,7 +144,6 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
-        # options sovrascrivono data: prima la configurazione iniziale, poi le modifiche
         self._current = {**config_entry.data, **config_entry.options}
 
     async def async_step_init(
@@ -171,7 +163,7 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_CLOUD_TOKEN,
                         default=self._current.get(CONF_CLOUD_TOKEN, ""),
-                    ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+                    ): str,
                     vol.Optional(
                         CONF_LATITUDE,
                         default=self._current.get(CONF_LATITUDE),

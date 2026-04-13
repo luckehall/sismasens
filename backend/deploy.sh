@@ -88,7 +88,50 @@ setup_apache() {
     ok "Apache vhost abilitato per $DOMAIN"
 }
 
-# ── Step 5: Container Docker ──────────────────────────────────────────────────
+# ── Step 5: Certificati EMQX ─────────────────────────────────────────────────
+setup_emqx_certs() {
+    local cert_dir="$BACKEND_DIR/broker/emqx/certs"
+    mkdir -p "$cert_dir"
+    # EMQX gira come uid 1000 — i cert devono essere leggibili
+    install -m 644 "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" "$cert_dir/fullchain.pem"
+    install -m 644 "/etc/letsencrypt/live/$DOMAIN/privkey.pem"   "$cert_dir/privkey.pem"
+    ok "Certificati copiati in $cert_dir"
+
+    # Hook di rinnovo: aggiorna i cert EMQX ad ogni rinnovo certbot
+    local hook="/etc/letsencrypt/renewal-hooks/deploy/sismasens-emqx.sh"
+    cat > "$hook" <<EOF
+#!/bin/bash
+# Aggiorna i cert EMQX dopo rinnovo certbot
+CERT_DIR="$cert_dir"
+install -m 644 /etc/letsencrypt/live/$DOMAIN/fullchain.pem "\$CERT_DIR/fullchain.pem"
+install -m 644 /etc/letsencrypt/live/$DOMAIN/privkey.pem   "\$CERT_DIR/privkey.pem"
+cd "$BACKEND_DIR" && docker compose restart emqx
+EOF
+    chmod +x "$hook"
+    ok "Hook rinnovo certificati installato in $hook"
+}
+
+# ── Step 6: JWT ingestor MQTT ─────────────────────────────────────────────────
+setup_ingestor_jwt() {
+    local secret
+    secret=$(grep '^MQTT_TOKEN_SECRET=' "$BACKEND_DIR/.env" | cut -d= -f2-)
+    [ -n "$secret" ] || die "MQTT_TOKEN_SECRET non trovato in .env"
+
+    local jwt
+    jwt=$(python3 -c "
+import base64, hmac, hashlib, json, time
+secret = '''$secret'''
+header  = base64.urlsafe_b64encode(json.dumps({'alg':'HS256','typ':'JWT'}, separators=(',',':')).encode()).rstrip(b'=').decode()
+payload = base64.urlsafe_b64encode(json.dumps({'sub':'ingestor','exp':int(time.time())+315360000,'type':'mqtt'}, separators=(',',':')).encode()).rstrip(b'=').decode()
+msg = f'{header}.{payload}'.encode()
+sig = base64.urlsafe_b64encode(hmac.new(secret.encode(), msg, hashlib.sha256).digest()).rstrip(b'=').decode()
+print(f'{header}.{payload}.{sig}')
+")
+    sed -i "s|^MQTT_INGESTOR_PASS=.*|MQTT_INGESTOR_PASS=$jwt|" "$BACKEND_DIR/.env"
+    ok "JWT ingestor generato e scritto in .env"
+}
+
+# ── Step 7: Container Docker ──────────────────────────────────────────────────
 start_containers() {
     cd "$BACKEND_DIR"
     docker compose pull --quiet 2>/dev/null || true
@@ -112,7 +155,9 @@ setup_env     # esce qui se .env non era presente
 }
 
 setup_tls
+setup_emqx_certs
 setup_apache
+setup_ingestor_jwt
 start_containers
 
 echo ""
