@@ -24,8 +24,12 @@ Sistema open source per il monitoraggio sismico basato su sensore **OMRON D7S** 
 |---|---|
 | [`hardware/`](hardware/) | Schema elettrico, BOM, pinout |
 | [`esphome/`](esphome/) | Firmware ESP32 — componente ESPHome custom |
-| [`homeassistant/`](homeassistant/) | Custom integration HA (installabile via HACS) |
-| [`backend/`](backend/) | API FastAPI, broker EMQX, dashboard React, Docker Compose |
+| [`homeassistant/`](homeassistant/) | Custom integration HA (riferimento — vedi `custom_components/`) |
+| [`custom_components/`](custom_components/) | Integration HA installabile via HACS |
+| [`backend/`](backend/) | **Submodulo** → [luckehall/sismasens-backend](https://github.com/luckehall/sismasens-backend) |
+
+> Il backend è mantenuto in un repository separato e collegato tramite **git submodule**.
+> Clona il repo con `--recurse-submodules` per ottenere anche il backend.
 
 ---
 
@@ -33,6 +37,18 @@ Sistema open source per il monitoraggio sismico basato su sensore **OMRON D7S** 
 
 - **OMRON D7S** (o modulo breakout **RAK12027**)
 - **ESP32** (es. ESP32-WROOM-32) collegato al D7S via I2C
+
+---
+
+## Clone
+
+```bash
+# Clone completo (repo principale + submodulo backend)
+git clone --recurse-submodules https://github.com/luckehall/sismasens.git
+
+# Se hai già clonato senza --recurse-submodules
+git submodule update --init --recursive
+```
 
 ---
 
@@ -63,7 +79,7 @@ Le entità avranno la forma `sensor.sismasens_<prefisso>_<prefisso>_earthquake`.
 ### Installazione manuale
 
 ```bash
-cp -r homeassistant/custom_components/sismasens /config/custom_components/sismasens
+cp -r custom_components/sismasens /config/custom_components/sismasens
 # Riavvia Home Assistant
 ```
 
@@ -97,13 +113,15 @@ cp -r homeassistant/custom_components/sismasens /config/custom_components/sismas
 
 ## 3. Backend cloud (VPS)
 
-Il backend richiede un VPS con **Ubuntu 22.04**, **Apache2** e **Certbot** già installati.  
-Il `deploy.sh` installa Docker, configura Apache e avvia tutti i container.
+Il backend è ospitato nel submodulo `backend/` ([luckehall/sismasens-backend](https://github.com/luckehall/sismasens-backend)).  
+Documentazione completa: vedi [`backend/README.md`](backend/README.md).
+
+Il backend richiede un VPS con **Ubuntu 22.04**, **Apache2** e **Certbot** già installati.
 
 ### Primo deploy
 
 ```bash
-git clone https://github.com/luckehall/sismasens /opt/sismasens
+git clone --recurse-submodules https://github.com/luckehall/sismasens /opt/sismasens
 sudo bash /opt/sismasens/backend/deploy.sh
 # → installa Docker, crea .env da .env.example, si ferma
 
@@ -117,27 +135,9 @@ sudo bash /opt/sismasens/backend/deploy.sh --start
 
 ```bash
 cd /opt/sismasens && git pull origin main
+git submodule update --remote --merge
 cd backend && docker compose up -d --build
 ```
-
-### Servizi avviati da Docker Compose
-
-| Container | Porta | Descrizione |
-|---|---|---|
-| `sismasens-api` | `127.0.0.1:8002` | API REST FastAPI (via Apache proxy `/api/`) |
-| `sismasens-dashboard` | `127.0.0.1:3001` | Dashboard React (via Apache proxy `/`) |
-| `sismasens-emqx` | `0.0.0.0:8883` | Broker MQTT/TLS (accesso pubblico per HA) |
-| `sismasens-ingestor` | interno | Subscriber MQTT → TimescaleDB |
-| `sismasens-postgres` | interno | PostgreSQL + TimescaleDB |
-
-### Variabili d'ambiente (`.env`)
-
-| Variabile | Descrizione |
-|---|---|
-| `POSTGRES_PASSWORD` | Password database |
-| `SECRET_KEY` | Chiave JWT per accesso API utenti |
-| `MQTT_TOKEN_SECRET` | Chiave HMAC-SHA256 per JWT MQTT sensori |
-| `MQTT_INGESTOR_PASS` | JWT per autenticazione ingestor su EMQX (generato da `deploy.sh`) |
 
 ---
 
@@ -145,11 +145,13 @@ cd backend && docker compose up -d --build
 
 Apri [sismasens.iotzator.com/setup](https://sismasens.iotzator.com/setup):
 
-1. Crea un account (email + password)
+1. Crea un account (email + password, opzionale 2FA TOTP, oppure **Accedi con Google**)
 2. Inserisci i dati del sensore (ID, nome, posizione)
 3. Clicca sulla mappa per impostare le coordinate
 4. Clicca **Registra** → ottieni il token MQTT
 5. Incolla il token in HA: Impostazioni → SISMASENS → Configura → Token MQTT
+
+Dalla stessa pagina puoi **revocare**, **riattivare** o **eliminare** i sensori registrati, e rigenerare il token MQTT.
 
 ---
 
@@ -162,13 +164,40 @@ Documentazione interattiva disponibile su `https://sismasens.iotzator.com/api/do
 | Metodo | Path | Auth | Descrizione |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | — | Crea account utente |
-| `POST` | `/api/auth/login` | — | Login → JWT access token |
+| `POST` | `/api/auth/login` | — | Login → JWT access token (o temp\_token se 2FA attivo) |
+| `POST` | `/api/auth/2fa/verify` | temp\_token | Completa login con codice TOTP |
+| `POST` | `/api/auth/google` | — | Login/registrazione via Google OAuth |
+| `POST` | `/api/auth/2fa/setup` | Bearer | Genera secret TOTP e QR URI |
+| `POST` | `/api/auth/2fa/enable` | Bearer | Abilita 2FA (verifica primo codice) |
+| `POST` | `/api/auth/2fa/disable` | Bearer | Disabilita 2FA |
 | `POST` | `/api/sensors/` | Bearer | Registra sensore |
 | `POST` | `/api/sensors/{id}/token` | Bearer | Genera/rigenera token MQTT |
+| `PATCH` | `/api/sensors/{id}/active` | Bearer | Revoca/riattiva sensore |
+| `DELETE` | `/api/sensors/{id}` | Bearer | Elimina sensore |
 | `GET` | `/api/sensors/public` | — | Lista sensori attivi (pubblica) |
 | `GET` | `/api/events/recent` | — | Ultimi 20 eventi (pubblica) |
 | `WS` | `/events/ws` | — | Stream eventi in real-time |
 | `GET` | `/api/health` | — | Health check |
+
+---
+
+## Workflow submodulo backend
+
+**Modificare il backend:**
+```bash
+cd /Users/lsala/Repo/sismasens-backend   # lavora nel repo backend
+git commit && git push origin main
+
+cd /Users/lsala/Repo/sismasens           # aggiorna il puntatore nel repo principale
+git -C backend pull origin main
+git add backend && git commit -m "chore: bump backend submodule"
+git push origin main
+```
+
+**Deploy VPS:**
+```bash
+ssh sismasens "cd /opt/sismasens && git pull origin main && git submodule update --remote --merge && cd backend && docker compose up -d --build"
+```
 
 ---
 
@@ -195,29 +224,16 @@ Ingestor scrive in TimescaleDB (tabella seismic_events)
 
 ---
 
-## Sviluppo locale
-
-### Dashboard (Vite + React)
-
-```bash
-cd backend/dashboard
-npm install
-VITE_API_BASE=http://localhost:8002 npm run dev
-```
-
-### API (FastAPI)
-
-```bash
-cd backend/api
-pip install -r requirements.txt
-uvicorn api.main:app --reload --port 8002
-```
-
----
-
 ## Changelog
 
-### v3.1.0 (corrente)
+### v3.2.0 (corrente)
+- Autenticazione utente: registrazione email+password con **2FA TOTP** opzionale
+- **Login con Google** (OAuth 2.0 / OIDC) — piattaforma
+- Gestione sensori nella dashboard: revoca, riattivazione, eliminazione, rinnovo token MQTT
+- Backend estratto in repo privato separato ([luckehall/sismasens-backend](https://github.com/luckehall/sismasens-backend)) e collegato come **git submodule**
+- HACS: `hacs.json` + `custom_components/` al root del repo per installazione diretta
+
+### v3.1.0
 - Pagina `/setup` per registrazione utente+sensore con mappa cliccabile
 - Fix autenticazione EMQX: JWT per ingestor, placeholder `${username}` ACL (EMQX 5.x)
 - Fix coordinator HA: MQTT username = prefisso originale (non normalizzato)
