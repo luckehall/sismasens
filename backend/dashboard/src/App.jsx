@@ -29,7 +29,7 @@ function MapPage() {
         <span style={{ fontSize: 20 }}>🌍</span>
         <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 1 }}>SISMASENS</span>
         <span style={{ color: '#64748b', fontSize: 13 }}>Monitoraggio Sismico Distribuito</span>
-        <Link to="/login" style={{
+        <Link to="/setup" style={{
           marginLeft: 'auto',
           fontSize: 12,
           color: '#38bdf8',
@@ -38,7 +38,7 @@ function MapPage() {
           border: '1px solid #38bdf8',
           borderRadius: 4,
         }}>
-          + Registra sensore
+          + Gestisci sensori
         </Link>
         <span style={{ color: '#64748b', fontSize: 12 }}>
           {sensors.length} attivi
