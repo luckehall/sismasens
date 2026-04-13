@@ -8,6 +8,11 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.components.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
@@ -121,7 +126,9 @@ class SismasensConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CLOUD_ENABLED, default=False): bool,
-                    vol.Optional(CONF_CLOUD_TOKEN, default=""): str,
+                    vol.Optional(CONF_CLOUD_TOKEN, default=""): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
                     vol.Optional(CONF_LATITUDE): vol.Coerce(float),
                     vol.Optional(CONF_LONGITUDE): vol.Coerce(float),
                 }
@@ -162,7 +169,7 @@ class SismasensOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_CLOUD_TOKEN,
                         default=self._config_entry.data.get(CONF_CLOUD_TOKEN, ""),
-                    ): str,
+                    ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
                     vol.Optional(
                         CONF_LATITUDE,
                         default=self._config_entry.data.get(CONF_LATITUDE),
