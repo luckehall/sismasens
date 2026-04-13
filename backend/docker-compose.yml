@@ -92,7 +92,7 @@ services:
       - /etc/letsencrypt/live/sismasens.iotzator.com/fullchain.pem:/etc/emqx/certs/fullchain.pem:ro
       - /etc/letsencrypt/live/sismasens.iotzator.com/privkey.pem:/etc/emqx/certs/privkey.pem:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:18083/status || exit 1"]
+      test: ["CMD", "emqx", "ping"]
       interval: 15s
       timeout: 10s
       retries: 5
