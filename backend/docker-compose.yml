@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://sismasens:${POSTGRES_PASSWORD:-sismasens}@postgres:5432/sismasens
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       MQTT_TOKEN_SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
-      ALLOWED_ORIGINS: "https://sismasens.iotzator.com,http://localhost:3000"
+      ALLOWED_ORIGINS: '["https://sismasens.iotzator.com","http://localhost:3000"]'
     depends_on:
       postgres:
         condition: service_healthy
