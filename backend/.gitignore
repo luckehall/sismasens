@@ -1,2 +1,0 @@
-.env
-broker/emqx/certs/*.pem
