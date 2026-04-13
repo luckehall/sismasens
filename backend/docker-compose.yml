@@ -74,9 +74,9 @@ services:
       EMQX_AUTHENTICATION__1__MECHANISM: jwt
       EMQX_AUTHENTICATION__1__FROM: password
       EMQX_AUTHENTICATION__1__USE_JWKS: "false"
+      EMQX_AUTHENTICATION__1__ALGORITHM: "hmac-based"
       EMQX_AUTHENTICATION__1__SECRET: ${MQTT_TOKEN_SECRET:-change-me-mqtt-secret}
       EMQX_AUTHENTICATION__1__SECRET_BASE64_ENCODED: "false"
-      EMQX_AUTHENTICATION__1__JWT_CLAIMS_CHECKS: "{}"
       # TLS listener 8883 — usa i certificati Let's Encrypt montati dall'host
       EMQX_LISTENERS__SSL__DEFAULT__ENABLED: "true"
       EMQX_LISTENERS__SSL__DEFAULT__BIND: "0.0.0.0:8883"
