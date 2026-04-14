@@ -1,7 +1,7 @@
 {
   "domain": "sismasens",
   "name": "SISMASENS Seismic Monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/luckehall/sismasens",
   "issue_tracker": "https://github.com/luckehall/sismasens/issues",
   "codeowners": ["@luckehall"],
