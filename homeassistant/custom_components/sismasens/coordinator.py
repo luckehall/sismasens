@@ -56,6 +56,11 @@ class SismasensCoordinator(DataUpdateCoordinator):
         self._mqtt_reconnecting = False
         self._unsub_state_listener = None
 
+        # Peak instantaneous values tracked during active earthquake
+        self._peak_inst_si: float = 0.0
+        self._peak_inst_pga: float = 0.0
+        self._peak_inst_mag: float = 0.0
+
         # Stato corrente del sensore
         self.data: dict[str, Any] = {
             "earthquake": False,
@@ -146,6 +151,18 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 old_active = new_active = False
         else:
             old_active = new_active = False
+        # Rileva inizio terremoto: resetta i peak tracker
+        if (
+            entity_id == earthquake_entity
+            and old_state is not None
+            and not old_active
+            and new_active
+        ):
+            self._peak_inst_si = 0.0
+            self._peak_inst_pga = 0.0
+            self._peak_inst_mag = 0.0
+            _LOGGER.info("SISMASENS: terremoto iniziato, reset peak istantanei")
+
         if (
             entity_id == earthquake_entity
             and old_state is not None
@@ -183,10 +200,16 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 self.data["last_mag"] = float(val)
             elif entity_id == self._entity_id("inst_si"):
                 self.data["inst_si"] = float(val)
+                if self.data.get("earthquake"):
+                    self._peak_inst_si = max(self._peak_inst_si, float(val))
             elif entity_id == self._entity_id("inst_pga"):
                 self.data["inst_pga"] = float(val)
+                if self.data.get("earthquake"):
+                    self._peak_inst_pga = max(self._peak_inst_pga, float(val))
             elif entity_id == self._entity_id("inst_mag"):
                 self.data["inst_mag"] = float(val)
+                if self.data.get("earthquake"):
+                    self._peak_inst_mag = max(self._peak_inst_mag, float(val))
             elif entity_id == self._entity_id("location"):
                 self.data["location"] = val
             elif entity_id == self._entity_id("last_eartquake"):
@@ -269,9 +292,9 @@ class SismasensCoordinator(DataUpdateCoordinator):
             "lat": self._lat,
             "lon": self._lon,
             "location": self.data.get("location", ""),
-            "si": self.data.get("last_si", 0.0),
-            "pga": self.data.get("last_pga", 0.0),
-            "magnitude": self.data.get("last_mag", 0.0),
+            "si": self._peak_inst_si,
+            "pga": self._peak_inst_pga,
+            "magnitude": self._peak_inst_mag,
             "temp": self.data.get("last_temp", 0.0),
             "collapse": self.data.get("collapse", False),
             "shutoff": self.data.get("shutoff", False),
