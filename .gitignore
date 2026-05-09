@@ -30,3 +30,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Claude Code — local settings (mai committare)
+.claude/settings.local.json
+.claude/todos.json
