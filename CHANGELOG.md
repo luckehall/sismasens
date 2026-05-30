@@ -1,5 +1,14 @@
 # Changelog
 
+## [FW 3.2] — 2026-05-30
+
+### Corretto
+- `doFullClear()`: sequenza reset D7S corretta secondo specifiche registro:
+  - Rimossi i clear ridondanti (clearEarthquakeData/Installation/Offset/Selftest prima di clearAllData)
+  - `initialize()` ora precede `acquireOffset()` (ordine corretto: prima si stabilisce l'asse di installazione, poi si acquisisce l'offset)
+  - Aggiunta attesa attiva su `getState() == NORMAL_MODE` dopo `initialize()` e dopo `acquireOffset()`, con WDT reset ogni 200ms (max 6 s ciascuna)
+  - Senza questa attesa il D7S tornava in NORMAL_MODE con asse non memorizzato, compromettendo il rilevamento collapse
+
 ## [FW 3.1] — 2026-05-30
 
 ### Corretto

@@ -111,17 +111,31 @@ class SismasensComponent : public PollingComponent {
   void doFullClear() {
     ESP_LOGD("clear", ">   CLEAR SENSOR - START");
     esp_task_wdt_reset();
-    D7S.clearEarthquakeData();
-    D7S.clearInstallationData();
-    D7S.clearLastestOffsetData();
-    D7S.clearSelftestData();
+
     D7S.clearAllData();
-    D7S.acquireOffset();
     D7S.setAxis(AUTO_SWITCH);
     D7S.setThreshold(THRESHOLD_HIGH);
     D7S.resetEvents();
+
     esp_task_wdt_reset();
     D7S.initialize();
+    // Attende che il D7S completi l'installazione (memorizza asse) prima di procedere
+    for (int i = 0; i < 30; i++) {
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      if (D7S.getState() == NORMAL_MODE) break;
+    }
+
+    esp_task_wdt_reset();
+    D7S.acquireOffset();
+    // Attende completamento offset acquisition
+    for (int i = 0; i < 30; i++) {
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      if (D7S.getState() == NORMAL_MODE) break;
+    }
+    esp_task_wdt_reset();
+
     ESP_LOGD("clear", ">   CLEAR SENSOR - DONE");
 
     eq_ = false; cl_ = false; so_ = false;
@@ -145,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.1              #");
+    ESP_LOGI("main", "#              ver. 3.2              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
