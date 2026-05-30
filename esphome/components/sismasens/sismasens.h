@@ -118,7 +118,7 @@ class SismasensComponent : public PollingComponent {
     D7S.clearAllData();
     D7S.acquireOffset();
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_MID);
+    D7S.setThreshold(THRESHOLD_HIGH);
     D7S.resetEvents();
     esp_task_wdt_reset();
     D7S.initialize();
@@ -175,7 +175,7 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("init", ">   D7S - STARTED");
 
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_MID);
+    D7S.setThreshold(THRESHOLD_HIGH);
 
     pinMode(INT1, INPUT_PULLUP);
     pinMode(INT2, INPUT_PULLUP);
