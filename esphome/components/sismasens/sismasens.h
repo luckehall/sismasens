@@ -53,6 +53,8 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
+  static constexpr const char* FW_VERSION = "3.5";
+  const char* get_fw_version() const { return FW_VERSION; }
 
   RAK_D7S D7S;
 
@@ -157,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.4              #");
+    ESP_LOGI("main", "#              ver. 3.5              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -313,7 +315,7 @@ class SismasensComponent : public PollingComponent {
     if ((millis() - t) > delay_time) {
       t = millis();
       SI_  = D7S.getInstantaneusSI() * 10;               // kine (cm/s)
-      PGA_ = D7S.getInstantaneusPGA() / 0.980665;        // g (libreria RAK12027 restituisce ~0.1 m/s² per unità)
+      PGA_ = D7S.getInstantaneusPGA() * 10.0 / 0.980665; // g — reg 0x2002: 0.01 m/s²/LSB; libreria divide /1000 (10× troppo), corretto qui
       MAG_ = magnitude(SI_, PGA_);                       // scPGA calibrata in g
       ESP_LOGD("sisma", "SI: %f  PGA: %f  MAG: %f", SI_, PGA_, MAG_);
 

@@ -254,7 +254,7 @@ text_sensor:
   - platform: template
     id: fw_version
     name: ${site} - FW Version
-    lambda: return id(fw);
+    lambda: 'return std::string(id(sismasens_component).get_fw_version());'
 
 # ---------------------------------------------------------------------------
 # GLOBALS
