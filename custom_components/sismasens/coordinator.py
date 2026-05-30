@@ -302,33 +302,46 @@ class SismasensCoordinator(DataUpdateCoordinator):
             self._mqtt_client.disconnect()
             self._mqtt_client = None
 
-    def _publish_event(self) -> None:
-        """Pubblica evento sismico sul broker cloud."""
-        if not self._mqtt_client:
-            return
+    @property
+    def cloud_connected(self) -> bool:
+        return self._cloud_enabled and self._mqtt_client is not None
 
-        payload = {
+    def _build_payload(self, *, test: bool = False) -> dict:
+        return {
             "sensor_id": self._prefix,
-            "timestamp": self.data.get("last_event_time"),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+            if test
+            else self.data.get("last_event_time"),
             "lat": self._lat,
             "lon": self._lon,
             "location": self.data.get("location", ""),
-            "si": self._peak_inst_si,
-            "pga": self._peak_inst_pga,
-            "magnitude": self._peak_inst_mag,
+            "si": self.data.get("last_si", 0.0) if test else self._peak_inst_si,
+            "pga": self.data.get("last_pga", 0.0) if test else self._peak_inst_pga,
+            "magnitude": self.data.get("last_mag", 0.0)
+            if test
+            else self._peak_inst_mag,
             "temp": self.data.get("last_temp", 0.0),
             "collapse": self.data.get("collapse", False),
             "shutoff": self.data.get("shutoff", False),
         }
 
+    def _publish_event(self) -> None:
+        """Pubblica evento sismico sul broker cloud."""
+        if not self._mqtt_client:
+            return
+        self._publish_payload(self._build_payload())
+
+    def _publish_payload(self, payload: dict) -> None:
         topic = CLOUD_TOPIC_EVENTS.format(sensor_id=self._prefix)
         try:
-            self._mqtt_client.publish(
-                topic,
-                json.dumps(payload),
-                qos=1,
-                retain=False,
-            )
+            self._mqtt_client.publish(topic, json.dumps(payload), qos=1, retain=False)
             _LOGGER.info("SISMASENS: evento pubblicato su %s: %s", topic, payload)
         except Exception as err:
             _LOGGER.error("SISMASENS: errore pubblicazione MQTT: %s", err)
+
+    def publish_test_event(self) -> None:
+        """Pubblica un evento di test con i valori post-evento memorizzati nel D7S."""
+        if not self._mqtt_client:
+            _LOGGER.warning("SISMASENS: test publish fallito — MQTT non connesso")
+            return
+        self._publish_payload(self._build_payload(test=True))
