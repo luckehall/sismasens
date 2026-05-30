@@ -269,4 +269,4 @@ globals:
     type: std::string
     restore_value: no
     max_restore_data_length: 12
-    initial_value: '"0.0"'
+    initial_value: '"0.0"'   # placeholder; il FW aggiorna via get_fw_version()

@@ -16,6 +16,11 @@
 ### Corretto
 - Coordinator: `_calc_magnitude(si, pga)` — porta Python della formula firmware per calcolare l'intensità JMA da SI e PGA. Sostituisce `_peak_inst_mag` in `_build_payload()`: la magnitudine pubblicata su cloud è ora sempre coerente con SI e PGA pubblicati.
 
+## [FW 3.6] — 2026-05-30
+
+### Corretto
+- `setup()`: `initialize()` ora attende NORMAL_MODE con loop attivo (max 10 s, WDT reset ogni 200 ms) invece di un'attesa fissa da 2 s. Il D7S necessita di completare la Initial Installation Mode per acquisire l'orientamento di riferimento del collapse; con 2 s fissi la modalità non completava → INT1 non scattava mai per collapse.
+
 ## [FW 3.5] — 2026-05-30
 
 ### Corretto

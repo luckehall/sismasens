@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "3.5";
+  static constexpr const char* FW_VERSION = "3.6";
   const char* get_fw_version() const { return FW_VERSION; }
 
   RAK_D7S D7S;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.5              #");
+    ESP_LOGI("main", "#              ver. 3.6              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -203,13 +203,17 @@ class SismasensComponent : public PollingComponent {
 
     ESP_LOGD("init", ">   D7S - INITIALIZING ...");
     esp_task_wdt_reset();
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    esp_task_wdt_reset();
     D7S.initialize();
+    // Attende NORMAL_MODE (max 10 s): il D7S deve completare l'Initial Installation
+    // Mode per acquisire l'orientamento di riferimento del collapse.
+    // Il precedente wait fisso da 2 s era insufficiente → collapse mai rilevato.
+    for (int i = 0; i < 50; i++) {
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      if (D7S.getState() == NORMAL_MODE) break;
+    }
     esp_task_wdt_reset();
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    esp_task_wdt_reset();
-    ESP_LOGD("init", ">   D7S - INITIALIZED!");
+    ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", D7S.getState());
 
     D7S.resetEvents();
     ESP_LOGD("init", ">   D7S - READY!");
