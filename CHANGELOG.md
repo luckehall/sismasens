@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2] — 2026-05-30
+
+### Corretto
+- Coordinator: pubblicazione cloud ritardata di 5 s dopo fine terremoto (`async_call_later`) per attendere che tutti i valori post-evento D7S (`last_si`, `last_pga`, `last_mag`) arrivino da ESPHome prima dell'invio MQTT.
+- `_build_payload()` usa sempre `last_si`/`last_pga`/`last_mag` (valori D7S mediati sull'evento, più accurati dei picchi istantanei). Rimosso `_calc_magnitude()` non più necessario.
+
 ## [1.1.1] — 2026-05-30
 
 ### Corretto

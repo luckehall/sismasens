@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
@@ -56,6 +56,7 @@ class SismasensCoordinator(DataUpdateCoordinator):
         self._mqtt_client = None
         self._mqtt_reconnecting = False
         self._unsub_state_listener = None
+        self._unsub_publish_timer = None  # timer ritardo pubblicazione post-evento
 
         # Peak instantaneous values tracked during active earthquake
         self._peak_inst_si: float = 0.0
@@ -129,6 +130,8 @@ class SismasensCoordinator(DataUpdateCoordinator):
         """Ferma listener e disconnette MQTT."""
         if self._unsub_state_listener:
             self._unsub_state_listener()
+        if self._unsub_publish_timer:
+            self._unsub_publish_timer()
         if self._mqtt_client:
             await self.hass.async_add_executor_job(self._disconnect_mqtt)
 
@@ -181,7 +184,14 @@ class SismasensCoordinator(DataUpdateCoordinator):
             self.async_set_updated_data(dict(self.data))
 
             if self._cloud_enabled and self._mqtt_client:
-                self.hass.async_add_executor_job(self._publish_event)
+                # Attende 5 s prima di pubblicare: ESPHome invia earthquake=0 prima
+                # di last_si/last_pga/last_mag; il ritardo garantisce di avere
+                # tutti i valori post-evento D7S disponibili nel payload.
+                if self._unsub_publish_timer:
+                    self._unsub_publish_timer()
+                self._unsub_publish_timer = async_call_later(
+                    self.hass, 5, self._async_publish_post_event
+                )
         else:
             self.async_set_updated_data(dict(self.data))
 
@@ -302,50 +312,32 @@ class SismasensCoordinator(DataUpdateCoordinator):
             self._mqtt_client.disconnect()
             self._mqtt_client = None
 
-    # Tabelle soglie intensità JMA (D7S application note OMRON)
-    _SC_PGA = [0.0555, 0.232, 0.721, 1.21, 3.38, 7.46, 14.5, 26.1, 44.4, 72.3]
-    _SC_SI = [0.0178, 0.0939, 0.38995, 0.686, 2.08, 5.06, 10.9, 21.6, 40.3, 71.7]
-
     @property
     def cloud_connected(self) -> bool:
         return self._cloud_enabled and self._mqtt_client is not None
 
-    def _calc_magnitude(self, si: float, pga: float) -> float:
-        """Calcola intensità JMA da SI (cm/s) e PGA (g) — porta della funzione firmware."""
-        mag_si, mag_pga = 0.0, 0.0
-        for i in range(10):
-            if si >= self._SC_SI[i]:
-                mag_si = i + 1
-                if i < 9:
-                    mag_si += (si - self._SC_SI[i]) / (
-                        self._SC_SI[i + 1] - self._SC_SI[i]
-                    )
-            if pga >= self._SC_PGA[i]:
-                mag_pga = i + 1
-                if i < 9:
-                    mag_pga += (pga - self._SC_PGA[i]) / (
-                        self._SC_PGA[i + 1] - self._SC_PGA[i]
-                    )
-        return round(max(mag_si, mag_pga), 3)
-
     def _build_payload(self, *, test: bool = False) -> dict:
-        si = self.data.get("last_si", 0.0) if test else self._peak_inst_si
-        pga = self.data.get("last_pga", 0.0) if test else self._peak_inst_pga
+        """Costruisce il payload con i valori post-evento D7S (last_si/pga/mag)."""
         return {
             "sensor_id": self._prefix,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-            if test
-            else self.data.get("last_event_time"),
+            "timestamp": self.data.get("last_event_time"),
             "lat": self._lat,
             "lon": self._lon,
             "location": self.data.get("location", ""),
-            "si": si,
-            "pga": pga,
-            "magnitude": self._calc_magnitude(si, pga),
+            "si": self.data.get("last_si", 0.0),
+            "pga": self.data.get("last_pga", 0.0),
+            "magnitude": self.data.get("last_mag", 0.0),
             "temp": self.data.get("last_temp", 0.0),
             "collapse": self.data.get("collapse", False),
             "shutoff": self.data.get("shutoff", False),
         }
+
+    @callback
+    def _async_publish_post_event(self, _now) -> None:
+        """Callback schedulato 5 s dopo la fine del terremoto: pubblica con valori D7S stabili."""
+        self._unsub_publish_timer = None
+        if self._cloud_enabled and self._mqtt_client:
+            self.hass.async_add_executor_job(self._publish_event)
 
     def _publish_event(self) -> None:
         """Pubblica evento sismico sul broker cloud."""
