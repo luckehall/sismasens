@@ -230,17 +230,25 @@ class SismasensComponent : public PollingComponent {
     }
 
     // --- Interrupt INT1: collapse / shutoff ---
+    // isInCollapse() e isInShutoff() della libreria RAK12027-D7S sono buggati:
+    // restituiscono costanti hardcoded (sempre true). Il registro EVENT 0x1002
+    // è read-clear: bit1=collapse, bit0=shutoff. Si legge direttamente via Wire.
     if (g_interrupt1Flag) {
       g_interrupt1Flag = false;
 
-      if (D7S.isInCollapse()) {
+      Wire.beginTransmission(0x55);
+      Wire.write(0x10); Wire.write(0x02);
+      Wire.endTransmission(false);
+      Wire.requestFrom((uint8_t)0x55, (uint8_t)1);
+      uint8_t events = Wire.available() ? Wire.read() & 0x03 : 0;
+
+      if (events & 0x02) {
         cl_ = true;
         if (collapse_sensor_ != nullptr)
           collapse_sensor_->publish_state(cl_);
         ESP_LOGD("run", ">   COLLAPSE!");
       }
-
-      if (D7S.isInShutoff()) {
+      if (events & 0x01) {
         so_ = true;
         if (shutoff_sensor_ != nullptr)
           shutoff_sensor_->publish_state(so_);
