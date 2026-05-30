@@ -1,5 +1,15 @@
 # Changelog
 
+## [FW 4.0.0] — 2026-05-31
+
+### Modificato
+- Libreria D7S sostituita: `RAK12027-D7S` → `luckehall/d7s-esphome` (riscrittura da zero)
+- `isInCollapse()` / `isInShutoff()` eliminati — sostituiti da `d7s_.readEventRegister()` + `isCollapseEvent()` / `isShutoffEvent()` con cache del registro read-clear 0x1002
+- Scaling PGA corretto: divisore `0.980665` → `9.80665` (1g = 9.80665 m/s²)
+- Scaling SI: rimossa moltiplicazione `* 10` della libreria RAK12027 — la nuova libreria restituisce cm/s nativi
+- API corretta: typo `isEarthquakeOccuring` / `getLastest*` / `getInstantneus*` → nomi corretti
+- I2C robusto: check `endTransmission()`, timeout 50 ms su `available()`, nessun `delay()` tra write
+
 ## [1.1.3] — 2026-05-30
 
 ### Corretto

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "esphome.h"
-#include "RAK12027_D7S.h"
+#include "D7S.h"
 #include "esp_task_wdt.h"
 
 namespace esphome {
@@ -53,10 +53,10 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "3.6";
+  static constexpr const char* FW_VERSION = "4.0.0";
   const char* get_fw_version() const { return FW_VERSION; }
 
-  RAK_D7S D7S;
+  D7S d7s_;
 
   sensor::Sensor *earthquake_sensor_{nullptr};
   sensor::Sensor *collapse_sensor_{nullptr};
@@ -112,27 +112,27 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("clear", ">   CLEAR SENSOR - START");
     esp_task_wdt_reset();
 
-    D7S.clearAllData();
-    D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_LOW);
-    D7S.resetEvents();
+    d7s_.clearAllData();
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
+    d7s_.resetEvents();
 
     esp_task_wdt_reset();
-    D7S.initialize();
+    d7s_.initialize();
     // Attende che il D7S completi l'installazione (memorizza asse) prima di procedere
     for (int i = 0; i < 30; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
-      if (D7S.getState() == NORMAL_MODE) break;
+      if (d7s_.getState() == NORMAL_MODE) break;
     }
 
     esp_task_wdt_reset();
-    D7S.acquireOffset();
+    d7s_.acquireOffset();
     // Attende completamento offset acquisition
     for (int i = 0; i < 30; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
-      if (D7S.getState() == NORMAL_MODE) break;
+      if (d7s_.getState() == NORMAL_MODE) break;
     }
     esp_task_wdt_reset();
 
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.6              #");
+    ESP_LOGI("main", "#             ver. 4.0.0             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -178,7 +178,7 @@ class SismasensComponent : public PollingComponent {
     bool ok = false;
     for (int i = 0; i < 50; i++) {
       esp_task_wdt_reset();
-      if (D7S.begin()) { ok = true; break; }
+      if (d7s_.begin(Wire)) { ok = true; break; }
       ESP_LOGD("init", ">   D7S - STARTING ...");
       vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -188,8 +188,8 @@ class SismasensComponent : public PollingComponent {
     }
     ESP_LOGD("init", ">   D7S - STARTED");
 
-    D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_LOW);
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
 
     pinMode(INT1, INPUT_PULLUP);
     pinMode(INT2, INPUT_PULLUP);
@@ -203,19 +203,19 @@ class SismasensComponent : public PollingComponent {
 
     ESP_LOGD("init", ">   D7S - INITIALIZING ...");
     esp_task_wdt_reset();
-    D7S.initialize();
+    d7s_.initialize();
     // Attende NORMAL_MODE (max 10 s): il D7S deve completare l'Initial Installation
     // Mode per acquisire l'orientamento di riferimento del collapse.
     // Il precedente wait fisso da 2 s era insufficiente → collapse mai rilevato.
     for (int i = 0; i < 50; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
-      if (D7S.getState() == NORMAL_MODE) break;
+      if (d7s_.getState() == NORMAL_MODE) break;
     }
     esp_task_wdt_reset();
-    ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", D7S.getState());
+    ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", d7s_.getState());
 
-    D7S.resetEvents();
+    d7s_.resetEvents();
     ESP_LOGD("init", ">   D7S - READY!");
   }
 
@@ -248,25 +248,17 @@ class SismasensComponent : public PollingComponent {
     }
 
     // --- Interrupt INT1: collapse / shutoff ---
-    // isInCollapse() e isInShutoff() della libreria RAK12027-D7S sono buggati:
-    // restituiscono costanti hardcoded (sempre true). Il registro EVENT 0x1002
-    // è read-clear: bit1=collapse, bit0=shutoff. Si legge direttamente via Wire.
     if (g_interrupt1Flag) {
       g_interrupt1Flag = false;
+      d7s_.readEventRegister();
 
-      Wire.beginTransmission(0x55);
-      Wire.write(0x10); Wire.write(0x02);
-      Wire.endTransmission(false);
-      Wire.requestFrom((uint8_t)0x55, (uint8_t)1);
-      uint8_t events = Wire.available() ? Wire.read() & 0x03 : 0;
-
-      if (events & 0x02) {
+      if (d7s_.isCollapseEvent()) {
         cl_ = true;
         if (collapse_sensor_ != nullptr)
           collapse_sensor_->publish_state(cl_);
         ESP_LOGD("run", ">   COLLAPSE!");
       }
-      if (events & 0x01) {
+      if (d7s_.isShutoffEvent()) {
         so_ = true;
         if (shutoff_sensor_ != nullptr)
           shutoff_sensor_->publish_state(so_);
@@ -278,7 +270,7 @@ class SismasensComponent : public PollingComponent {
     if (g_interrupt2Flag) {
       g_interrupt2Flag = false;
 
-      if (D7S.isEarthquakeOccuring()) {
+      if (d7s_.isEarthquakeOccurring()) {
         eq_ = true;
         weeklyResetDone = false;
         tLastShake = millis();
@@ -290,15 +282,15 @@ class SismasensComponent : public PollingComponent {
         eq_ = false; cl_ = false; so_ = false;
         ESP_LOGD("run", ">   EARTHQUAKE ENDED!");
 
-        SI_ = D7S.getLastestSI(0) * 10;                  // kine (cm/s)
+        SI_ = d7s_.getLatestSI(0);                        // cm/s (kine)
         ESP_LOGD("run", ">   READ lastSI");
         vTaskDelay(pdMS_TO_TICKS(350));
 
-        PGA_ = D7S.getLastestPGA(0) / 0.980665;          // g (libreria RAK12027 restituisce ~0.1 m/s² per unità)
+        PGA_ = d7s_.getLatestPGA(0) / 9.80665;            // m/s² → g
         ESP_LOGD("run", ">   READ lastPGA");
         vTaskDelay(pdMS_TO_TICKS(350));
 
-        TEMP_ = D7S.getLastestTemperature(0);
+        TEMP_ = d7s_.getLatestTemperature(0);
         ESP_LOGD("run", ">   READ lastTEMP");
 
         MAG_ = magnitude(SI_, PGA_);                      // scPGA calibrata in g
@@ -318,8 +310,8 @@ class SismasensComponent : public PollingComponent {
 
     if ((millis() - t) > delay_time) {
       t = millis();
-      SI_  = D7S.getInstantaneusSI() * 10;               // kine (cm/s)
-      PGA_ = D7S.getInstantaneusPGA() * 10.0 / 0.980665; // g — reg 0x2002: 0.01 m/s²/LSB; libreria divide /1000 (10× troppo), corretto qui
+      SI_  = d7s_.getInstantaneousSI();                   // cm/s (kine)
+      PGA_ = d7s_.getInstantaneousPGA() / 9.80665;        // m/s² → g
       MAG_ = magnitude(SI_, PGA_);                       // scPGA calibrata in g
       ESP_LOGD("sisma", "SI: %f  PGA: %f  MAG: %f", SI_, PGA_, MAG_);
 
