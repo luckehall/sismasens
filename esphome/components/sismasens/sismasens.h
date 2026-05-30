@@ -53,6 +53,9 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
+  static constexpr const char* FW_VERSION = "3.4";
+  const char* get_fw_version() const { return FW_VERSION; }
+
   RAK_D7S D7S;
 
   sensor::Sensor *earthquake_sensor_{nullptr};
@@ -156,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.3              #");
+    ESP_LOGI("main", "#              ver. 3.4              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");

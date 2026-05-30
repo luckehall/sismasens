@@ -253,7 +253,7 @@ text_sensor:
   - platform: template
     id: fw_version
     name: ${site} - FW Version
-    lambda: return id(fw);
+    lambda: 'return std::string(id(sismasens_component).get_fw_version());'
 
 # ---------------------------------------------------------------------------
 # GLOBALS
@@ -268,4 +268,4 @@ globals:
     type: std::string
     restore_value: yes
     max_restore_data_length: 12
-    initial_value: '"3.3"'
+    initial_value: '"3.4"'

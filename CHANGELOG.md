@@ -16,6 +16,11 @@
 ### Corretto
 - Coordinator: `_calc_magnitude(si, pga)` — porta Python della formula firmware per calcolare l'intensità JMA da SI e PGA. Sostituisce `_peak_inst_mag` in `_build_payload()`: la magnitudine pubblicata su cloud è ora sempre coerente con SI e PGA pubblicati.
 
+## [FW 3.4] — 2026-05-30
+
+### Aggiunto
+- `SismasensComponent::get_fw_version()` — espone la versione del firmware come costante C++ (`FW_VERSION = "3.4"`). Il text sensor ESPHome `fw_version` chiama `id(sismasens_component).get_fw_version()` invece del global `fw`, rendendo sismasens.h l'unica sorgente della verità per la versione.
+
 ## [FW 3.3] — 2026-05-30
 
 ### Corretto
