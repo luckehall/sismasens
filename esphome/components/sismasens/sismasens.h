@@ -53,8 +53,6 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "3.4";
-  const char* get_fw_version() const { return FW_VERSION; }
 
   RAK_D7S D7S;
 
