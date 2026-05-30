@@ -118,7 +118,7 @@ class SismasensComponent : public PollingComponent {
     D7S.clearAllData();
     D7S.acquireOffset();
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_LOW);
+    D7S.setThreshold(THRESHOLD_MID);
     D7S.resetEvents();
     esp_task_wdt_reset();
     D7S.initialize();
@@ -145,7 +145,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.0              #");
+    ESP_LOGI("main", "#             ver. 2.5.1             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -175,7 +175,7 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("init", ">   D7S - STARTED");
 
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_LOW);
+    D7S.setThreshold(THRESHOLD_MID);
 
     pinMode(INT1, INPUT_PULLUP);
     pinMode(INT2, INPUT_PULLUP);
