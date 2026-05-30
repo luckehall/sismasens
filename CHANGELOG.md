@@ -1,5 +1,11 @@
 # Changelog
 
+## [FW 3.1] — 2026-05-30
+
+### Corretto
+- Bypass di `isInCollapse()` e `isInShutoff()` della libreria RAK12027-D7S: entrambe restituivano costante `1` (sempre true) per un bug nell'implementazione. Lettura diretta del registro EVENT 0x1002 via Wire (bit1=collapse, bit0=shutoff, read-clear).
+- Threshold D7S: `THRESHOLD_LOW` → `THRESHOLD_HIGH` per ridurre i falsi positivi da vibrazioni meccaniche non sismiche.
+
 ## [1.1.0] — 2026-05-30
 
 ### Aggiunto

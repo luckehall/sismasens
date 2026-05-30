@@ -145,7 +145,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 3.0.1             #");
+    ESP_LOGI("main", "#              ver. 3.1              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
