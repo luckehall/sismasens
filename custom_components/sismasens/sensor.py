@@ -1,4 +1,5 @@
 """Sensori numerici SISMASENS per Home Assistant."""
+
 from __future__ import annotations
 
 from homeassistant.components.sensor import (
@@ -25,19 +26,75 @@ async def async_setup_entry(
     prefix = entry.data["device_prefix"]
 
     entities = [
-        SismasensSensor(coordinator, prefix, "last_si",    "Last SI",    "cm/s",  SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "last_pga",   "Last PGA",   "g",     SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "last_temp",  "Last Temp",  "°C",    SensorStateClass.MEASUREMENT, SensorDeviceClass.TEMPERATURE),
-        SismasensSensor(coordinator, prefix, "last_mag",   "Last M",     None,    SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "inst_si",    "Inst SI",    "cm/s",  SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "inst_pga",   "Inst PGA",   "g",     SensorStateClass.MEASUREMENT, None),
-        SismasensSensor(coordinator, prefix, "inst_mag",   "Inst M",     None,    SensorStateClass.MEASUREMENT, None),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "last_si",
+            "Last SI",
+            "cm/s",
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "last_pga",
+            "Last PGA",
+            "g",
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "last_temp",
+            "Last Temp",
+            "°C",
+            SensorStateClass.MEASUREMENT,
+            SensorDeviceClass.TEMPERATURE,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "last_mag",
+            "Last M",
+            None,
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "inst_si",
+            "Inst SI",
+            "cm/s",
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "inst_pga",
+            "Inst PGA",
+            "g",
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensSensor(
+            coordinator,
+            prefix,
+            "inst_mag",
+            "Inst M",
+            None,
+            SensorStateClass.MEASUREMENT,
+            None,
+        ),
+        SismasensFWVersionSensor(coordinator, prefix),
     ]
     async_add_entities(entities)
 
 
 class SismasensSensor(CoordinatorEntity, SensorEntity):
-
     def __init__(
         self,
         coordinator: SismasensCoordinator,
@@ -49,6 +106,7 @@ class SismasensSensor(CoordinatorEntity, SensorEntity):
         device_class: SensorDeviceClass | None,
     ) -> None:
         import re
+
         super().__init__(coordinator)
         norm_prefix = re.sub(r"[^a-z0-9]", "_", prefix.lower())
         self._data_key = data_key
@@ -68,3 +126,27 @@ class SismasensSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         return self.coordinator.data.get(self._data_key)
+
+
+class SismasensFWVersionSensor(CoordinatorEntity, SensorEntity):
+    """Versione del firmware ESPHome letta dal sensore."""
+
+    def __init__(self, coordinator: SismasensCoordinator, prefix: str) -> None:
+        import re
+
+        super().__init__(coordinator)
+        norm_prefix = re.sub(r"[^a-z0-9]", "_", prefix.lower())
+        self._attr_name = f"SISMASENS {prefix} FW Version"
+        self._attr_unique_id = f"sismasens_{norm_prefix}_fw_version"
+        self._attr_icon = "mdi:chip"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, prefix)},
+            name=f"SISMASENS {prefix}",
+            manufacturer="SISMASENS",
+            model="D7S Seismic Sensor",
+            sw_version=VERSION,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.data.get("fw_version")
