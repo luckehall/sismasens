@@ -302,11 +302,35 @@ class SismasensCoordinator(DataUpdateCoordinator):
             self._mqtt_client.disconnect()
             self._mqtt_client = None
 
+    # Tabelle soglie intensità JMA (D7S application note OMRON)
+    _SC_PGA = [0.0555, 0.232, 0.721, 1.21, 3.38, 7.46, 14.5, 26.1, 44.4, 72.3]
+    _SC_SI = [0.0178, 0.0939, 0.38995, 0.686, 2.08, 5.06, 10.9, 21.6, 40.3, 71.7]
+
     @property
     def cloud_connected(self) -> bool:
         return self._cloud_enabled and self._mqtt_client is not None
 
+    def _calc_magnitude(self, si: float, pga: float) -> float:
+        """Calcola intensità JMA da SI (cm/s) e PGA (g) — porta della funzione firmware."""
+        mag_si, mag_pga = 0.0, 0.0
+        for i in range(10):
+            if si >= self._SC_SI[i]:
+                mag_si = i + 1
+                if i < 9:
+                    mag_si += (si - self._SC_SI[i]) / (
+                        self._SC_SI[i + 1] - self._SC_SI[i]
+                    )
+            if pga >= self._SC_PGA[i]:
+                mag_pga = i + 1
+                if i < 9:
+                    mag_pga += (pga - self._SC_PGA[i]) / (
+                        self._SC_PGA[i + 1] - self._SC_PGA[i]
+                    )
+        return round(max(mag_si, mag_pga), 3)
+
     def _build_payload(self, *, test: bool = False) -> dict:
+        si = self.data.get("last_si", 0.0) if test else self._peak_inst_si
+        pga = self.data.get("last_pga", 0.0) if test else self._peak_inst_pga
         return {
             "sensor_id": self._prefix,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -315,11 +339,9 @@ class SismasensCoordinator(DataUpdateCoordinator):
             "lat": self._lat,
             "lon": self._lon,
             "location": self.data.get("location", ""),
-            "si": self.data.get("last_si", 0.0) if test else self._peak_inst_si,
-            "pga": self.data.get("last_pga", 0.0) if test else self._peak_inst_pga,
-            "magnitude": self.data.get("last_mag", 0.0)
-            if test
-            else self._peak_inst_mag,
+            "si": si,
+            "pga": pga,
+            "magnitude": self._calc_magnitude(si, pga),
             "temp": self.data.get("last_temp", 0.0),
             "collapse": self.data.get("collapse", False),
             "shutoff": self.data.get("shutoff", False),

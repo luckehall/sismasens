@@ -28,25 +28,22 @@ static void IRAM_ATTR resetPin_ISR() {
 }
 
 double magnitude(double _SI, double _PGA) {
-  double mag = 0.0;
-  double dec = 0.0;
+  // Calcola indipendentemente l'intensità da SI e da PGA, poi prende il massimo.
+  // La versione precedente usava un unico ciclo con variabile condivisa: l'interpolazione
+  // decimale di PGA veniva ignorata se SI aveva già prodotto una frazione sullo stesso
+  // livello intero (condizione mag < (i+1) falsa).
+  double mag_si = 0.0, mag_pga = 0.0;
   for (int i = 0; i < 10; i++) {
     if (_SI >= scSI[i]) {
-      mag = i + 1;
-      if (i < 9) {
-        dec = (_SI - scSI[i]) / (scSI[i + 1] - scSI[i]);
-        mag = mag + dec;
-      }
+      mag_si = i + 1;
+      if (i < 9) mag_si += (_SI - scSI[i]) / (scSI[i + 1] - scSI[i]);
     }
-    if ((_PGA >= scPGA[i]) && (mag < (i + 1))) {
-      mag = i + 1;
-      if (i < 9) {
-        dec = (_PGA - scPGA[i]) / (scPGA[i + 1] - scPGA[i]);
-        mag = mag + dec;
-      }
+    if (_PGA >= scPGA[i]) {
+      mag_pga = i + 1;
+      if (i < 9) mag_pga += (_PGA - scPGA[i]) / (scPGA[i + 1] - scPGA[i]);
     }
   }
-  return mag;
+  return mag_si > mag_pga ? mag_si : mag_pga;
 }
 
 class SismasensComponent : public PollingComponent {
@@ -114,7 +111,7 @@ class SismasensComponent : public PollingComponent {
 
     D7S.clearAllData();
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_HIGH);
+    D7S.setThreshold(THRESHOLD_LOW);
     D7S.resetEvents();
 
     esp_task_wdt_reset();
@@ -159,7 +156,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#              ver. 3.2              #");
+    ESP_LOGI("main", "#              ver. 3.3              #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -189,7 +186,7 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("init", ">   D7S - STARTED");
 
     D7S.setAxis(AUTO_SWITCH);
-    D7S.setThreshold(THRESHOLD_HIGH);
+    D7S.setThreshold(THRESHOLD_LOW);
 
     pinMode(INT1, INPUT_PULLUP);
     pinMode(INT2, INPUT_PULLUP);

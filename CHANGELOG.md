@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.1] — 2026-05-30
+
+### Corretto
+- Coordinator: `_calc_magnitude(si, pga)` — porta Python della formula firmware per calcolare l'intensità JMA da SI e PGA. Sostituisce `_peak_inst_mag` in `_build_payload()`: la magnitudine pubblicata su cloud è ora sempre coerente con SI e PGA pubblicati.
+
+## [FW 3.3] — 2026-05-30
+
+### Corretto
+- `magnitude()`: separati i cicli di valutazione SI e PGA; il risultato è `max(mag_si, mag_pga)`. Il bug precedente ignorava l'interpolazione decimale di PGA quando SI aveva già prodotto una frazione sullo stesso livello intero.
+- Threshold D7S ripristinato a `THRESHOLD_LOW` (più sensibile).
+
 ## [FW 3.2] — 2026-05-30
 
 ### Corretto
