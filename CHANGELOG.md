@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0] — 2026-05-30
+
+### Aggiunto
+- Button "Test Cloud Publish" nel device HA: pubblica un evento di test con i valori D7S attuali senza attendere un evento sismico reale. Visibile solo se cloud è abilitato e MQTT è connesso.
+
+### Corretto
+- Coordinator: aggiunto `on_connect` callback per logging esplicito dell'esito autenticazione MQTT.
+
 ## [1.0.2] — 2026-05-30
 
 ### Aggiunto
