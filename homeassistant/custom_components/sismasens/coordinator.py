@@ -1,4 +1,5 @@
 """Coordinator SISMASENS: ascolta eventi ESPHome e pubblica su cloud MQTT."""
+
 from __future__ import annotations
 
 import json
@@ -99,8 +100,11 @@ class SismasensCoordinator(DataUpdateCoordinator):
         """Recupera le coordinate del sensore dal backend pubblico."""
         try:
             import aiohttp
+
             async with aiohttp.ClientSession() as session:
-                async with session.get(CLOUD_API_SENSORS_PUBLIC, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.get(
+                    CLOUD_API_SENSORS_PUBLIC, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
                     if resp.status == 200:
                         sensors = await resp.json()
                         for s in sensors:
@@ -109,11 +113,14 @@ class SismasensCoordinator(DataUpdateCoordinator):
                                 self._lon = s.get("lon")
                                 _LOGGER.info(
                                     "SISMASENS: coordinate sensore '%s' → lat=%s lon=%s",
-                                    self._prefix, self._lat, self._lon,
+                                    self._prefix,
+                                    self._lat,
+                                    self._lon,
                                 )
                                 return
                         _LOGGER.warning(
-                            "SISMASENS: sensore '%s' non trovato nel backend pubblico", self._prefix
+                            "SISMASENS: sensore '%s' non trovato nel backend pubblico",
+                            self._prefix,
                         )
         except Exception as err:
             _LOGGER.error("SISMASENS: errore recupero coordinate dal backend: %s", err)
@@ -248,6 +255,7 @@ class SismasensCoordinator(DataUpdateCoordinator):
                 tls_ctx.options |= ssl.OP_IGNORE_UNEXPECTED_EOF
             client.tls_set_context(tls_ctx)
 
+            client.on_connect = self._on_mqtt_connect
             client.on_disconnect = self._on_mqtt_disconnect
 
             client.connect(CLOUD_BROKER, CLOUD_PORT, keepalive=60)
@@ -255,17 +263,30 @@ class SismasensCoordinator(DataUpdateCoordinator):
             self._mqtt_client = client
             _LOGGER.info("SISMASENS: connesso al broker cloud %s", CLOUD_BROKER)
         except Exception as err:
-            _LOGGER.error("SISMASENS: errore connessione MQTT cloud: %s — riprovo tra 60 s", err)
+            _LOGGER.error(
+                "SISMASENS: errore connessione MQTT cloud: %s — riprovo tra 60 s", err
+            )
             if not self._mqtt_reconnecting:
                 self._mqtt_reconnecting = True
                 threading.Thread(target=self._reconnect_loop, daemon=True).start()
+
+    def _on_mqtt_connect(self, client, userdata, flags, rc) -> None:
+        """Callback paho: esito del tentativo di connessione/autenticazione."""
+        if rc == 0:
+            _LOGGER.info("SISMASENS: autenticazione MQTT riuscita su %s", CLOUD_BROKER)
+        else:
+            _LOGGER.error(
+                "SISMASENS: autenticazione MQTT fallita (rc=%s) — riprovo tra 60 s", rc
+            )
 
     def _on_mqtt_disconnect(self, client, userdata, rc) -> None:
         """Callback paho: connessione persa — avvia riconnessione (una sola volta)."""
         if rc != 0 and not self._mqtt_reconnecting:
             self._mqtt_reconnecting = True
             self._mqtt_client = None
-            _LOGGER.warning("SISMASENS: connessione MQTT persa (rc=%s) — riprovo tra 60 s", rc)
+            _LOGGER.warning(
+                "SISMASENS: connessione MQTT persa (rc=%s) — riprovo tra 60 s", rc
+            )
             threading.Thread(target=self._reconnect_loop, daemon=True).start()
 
     def _reconnect_loop(self) -> None:
