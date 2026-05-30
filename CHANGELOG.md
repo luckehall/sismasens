@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.3] — 2026-05-30
+
+### Corretto
+- `_build_payload()`: torna a usare i picchi istantanei `_peak_inst_si`/`_peak_inst_pga` con magnitudine calcolata via `_calc_magnitude()`. I valori `last_*` del D7S non vengono memorizzati per eventi sotto la soglia di detection, rendendo impossibile la pubblicazione di quei dati al cloud. I picchi istantanei sono invece sempre disponibili per qualsiasi evento rilevato dal coordinator.
+
 ## [1.1.2] — 2026-05-30
 
 ### Corretto
