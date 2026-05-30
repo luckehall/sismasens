@@ -19,6 +19,7 @@ esphome:
         type: git
         url: https://github.com/luckehall/sismasens
         ref: main
+        refresh: 5min
       components: [sismasens]
 
 esp32:
@@ -268,4 +269,4 @@ globals:
     type: std::string
     restore_value: no
     max_restore_data_length: 12
-    initial_value: '"3.4"'
+    initial_value: '"0.0"'
