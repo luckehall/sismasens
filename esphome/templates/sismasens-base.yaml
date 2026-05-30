@@ -13,7 +13,7 @@ esphome:
   name: $devicename
   libraries:
     - "Wire"
-    - "https://github.com/luckehall/d7s-esphome"
+    - "D7S=https://github.com/luckehall/d7s-esphome"
   external_components:
     - source:
         type: git
