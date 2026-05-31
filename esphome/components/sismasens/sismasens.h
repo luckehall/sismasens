@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.1";
+  static constexpr const char* FW_VERSION = "4.0.2";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.1             #");
+    ESP_LOGI("main", "#             ver. 4.0.2             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -177,6 +177,12 @@ class SismasensComponent : public PollingComponent {
     // (500 ms non erano sufficienti: le prime operazioni I2C fallivano con INVALID_STATE)
     esp_task_wdt_reset();
     vTaskDelay(pdMS_TO_TICKS(1000));
+    // Il reset hardware del D7S può glitch-are il bus I2C e corrompere lo stato
+    // interno del driver ESP32 (ESP_ERR_INVALID_STATE su tutte le operazioni successive).
+    // Wire.end() + Wire.begin() ripristina il driver in stato pulito.
+    Wire.end();
+    Wire.begin(21, 22);
+    Wire.setClock(100000);
     ESP_LOGD("init", ">   D7S - RESETTED!");
 
     bool ok = false;
