@@ -173,6 +173,10 @@ class SismasensComponent : public PollingComponent {
     esp_task_wdt_reset();
     vTaskDelay(pdMS_TO_TICKS(500));
     digitalWrite(SET, LOW);
+    // Attende che il D7S completi il boot interno dopo il reset hardware
+    // (500 ms non erano sufficienti: le prime operazioni I2C fallivano con INVALID_STATE)
+    esp_task_wdt_reset();
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGD("init", ">   D7S - RESETTED!");
 
     bool ok = false;
