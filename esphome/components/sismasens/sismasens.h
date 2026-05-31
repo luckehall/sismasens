@@ -286,7 +286,7 @@ class SismasensComponent : public PollingComponent {
         ESP_LOGD("run", ">   READ lastSI");
         vTaskDelay(pdMS_TO_TICKS(350));
 
-        PGA_ = d7s_.getLatestPGA(0) / 9.80665;            // m/s² → g
+        PGA_ = d7s_.getLatestPGA(0);                       // g
         ESP_LOGD("run", ">   READ lastPGA");
         vTaskDelay(pdMS_TO_TICKS(350));
 
@@ -311,7 +311,7 @@ class SismasensComponent : public PollingComponent {
     if ((millis() - t) > delay_time) {
       t = millis();
       SI_  = d7s_.getInstantaneousSI();                   // cm/s (kine)
-      PGA_ = d7s_.getInstantaneousPGA() / 9.80665;        // m/s² → g
+      PGA_ = d7s_.getInstantaneousPGA();                   // g
       MAG_ = magnitude(SI_, PGA_);                       // scPGA calibrata in g
       ESP_LOGD("sisma", "SI: %f  PGA: %f  MAG: %f", SI_, PGA_, MAG_);
 
