@@ -204,9 +204,10 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("init", ">   D7S - INITIALIZING ...");
     esp_task_wdt_reset();
     d7s_.initialize();
-    // Attende NORMAL_MODE (max 10 s): il D7S deve completare l'Initial Installation
-    // Mode per acquisire l'orientamento di riferimento del collapse.
-    // Il precedente wait fisso da 2 s era insufficiente → collapse mai rilevato.
+    // Attende NORMAL_MODE: il D7S deve completare l'Initial Installation Mode
+    // (acquisisce orientamento di riferimento per il collapse).
+    // Con CMD_INIT sbagliato il sensore non transita mai → loop usciva subito
+    // → nessun orientamento acquisito → collapse sempre 0.
     for (int i = 0; i < 50; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
@@ -214,6 +215,16 @@ class SismasensComponent : public PollingComponent {
     }
     esp_task_wdt_reset();
     ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", d7s_.getState());
+
+    d7s_.acquireOffset();
+    // Attende NORMAL_MODE: calibrazione offset accelerometro (migliora precisione SI/PGA).
+    for (int i = 0; i < 50; i++) {
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      if (d7s_.getState() == NORMAL_MODE) break;
+    }
+    esp_task_wdt_reset();
+    ESP_LOGD("init", ">   D7S - OFFSET ACQUIRED! state=%d", d7s_.getState());
 
     d7s_.resetEvents();
     ESP_LOGD("init", ">   D7S - READY!");
