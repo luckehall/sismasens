@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.9";
+  static constexpr const char* FW_VERSION = "4.0.10";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.9             #");
+    ESP_LOGI("main", "#             ver. 4.0.10            #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -309,8 +309,9 @@ class SismasensComponent : public PollingComponent {
       // LOGW per massima visibilità: mostra sempre il raw byte e lo stato del pin.
       // Se INT1 scatta ma ev=0x00 → evento già letto/azzerato o glitch.
       // Se INT1 non scatta mai → problema hardware (pin non collegato o D7S non inizializzato).
-      ESP_LOGW("run", ">   INT1 fired! event=0x%02X (collapse=%d shutoff=%d) pin=%d",
-               ev, d7s_.isCollapseEvent(), d7s_.isShutoffEvent(), digitalRead(INT1));
+      // Diagnostica bit: bit0=shutoff, bit1=collapse
+      ESP_LOGW("run", ">   INT1 fired! event=0x%02X (bit0=%d bit1=%d) collapse=%d shutoff=%d pin=%d",
+               ev, (ev & 0x01), (ev & 0x02) >> 1, d7s_.isCollapseEvent(), d7s_.isShutoffEvent(), digitalRead(INT1));
 
       if (d7s_.isCollapseEvent()) {
         cl_ = true;
