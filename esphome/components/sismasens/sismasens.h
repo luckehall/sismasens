@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.6";
+  static constexpr const char* FW_VERSION = "4.0.7";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.6             #");
+    ESP_LOGI("main", "#             ver. 4.0.7             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -212,13 +212,22 @@ class SismasensComponent : public PollingComponent {
     attachInterrupt(digitalPinToInterrupt(RESET_PIN), resetPin_ISR, RISING);
     ESP_LOGD("init", ">   RESET_PIN interrupt - OK");
 
+    // Retry initialize() finché il D7S conferma il ricezione via transizione di stato.
+    // Se la write di CMD_INIT non arriva (I2C ancora instabile), lo STATE rimane
+    // NORMAL_MODE dopo 200ms → retry. Questo è l'unico check hardware-verificato
+    // che garantisce che il D7S abbia effettivamente ricevuto il comando.
     ESP_LOGD("init", ">   D7S - INITIALIZING ...");
-    esp_task_wdt_reset();
-    d7s_.initialize();
-    // Attende NORMAL_MODE: il D7S deve completare l'Initial Installation Mode
-    // (acquisisce orientamento di riferimento per il collapse).
-    // Con CMD_INIT sbagliato il sensore non transita mai → loop usciva subito
-    // → nessun orientamento acquisito → collapse sempre 0.
+    for (int attempt = 0; attempt < 30; attempt++) {
+      esp_task_wdt_reset();
+      d7s_.setAxis(AXIS_AUTO_SWITCH);
+      d7s_.setThreshold(THRESHOLD_LOW);
+      d7s_.initialize();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      D7SState s = d7s_.getState();
+      ESP_LOGD("init", ">   D7S init attempt %d state=%d", attempt + 1, s);
+      if (s != NORMAL_MODE) break;  // CMD_INIT ricevuto, D7S in transizione
+    }
+    // Attende che Initial Installation Mode completi (torna a NORMAL_MODE)
     for (int i = 0; i < 50; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
@@ -227,8 +236,15 @@ class SismasensComponent : public PollingComponent {
     esp_task_wdt_reset();
     ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", d7s_.getState());
 
-    d7s_.acquireOffset();
-    // Attende NORMAL_MODE: calibrazione offset accelerometro (migliora precisione SI/PGA).
+    // Retry acquireOffset() con la stessa logica di verifica.
+    for (int attempt = 0; attempt < 10; attempt++) {
+      esp_task_wdt_reset();
+      d7s_.acquireOffset();
+      vTaskDelay(pdMS_TO_TICKS(200));
+      D7SState s = d7s_.getState();
+      if (s != NORMAL_MODE) break;  // CMD_OFFSET ricevuto
+    }
+    // Attende completamento offset acquisition
     for (int i = 0; i < 50; i++) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(200));
