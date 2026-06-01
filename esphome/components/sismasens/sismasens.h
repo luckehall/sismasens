@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.7";
+  static constexpr const char* FW_VERSION = "4.0.8";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.7             #");
+    ESP_LOGI("main", "#             ver. 4.0.8             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -266,6 +266,13 @@ class SismasensComponent : public PollingComponent {
     if (collapse_sensor_   != nullptr) collapse_sensor_->publish_state(false);
     if (shutoff_sensor_    != nullptr) shutoff_sensor_->publish_state(false);
 
+    // Diagnostica hardware: stato del pin INT1 dopo init.
+    // Atteso: 1 (HIGH = idle, D7S non sta asserendo eventi).
+    // Se 0 (LOW): il D7S sta segnalando un evento collapse/shutoff residuo;
+    //   chiamare resetEvents() ha già letto 0x1002 e dovrebbe averlo rilasciato.
+    ESP_LOGW("init", ">   INT1 pin=%d INT2 pin=%d (atteso: 1=idle)",
+             digitalRead(INT1), digitalRead(INT2));
+
     ESP_LOGD("init", ">   D7S - READY!");
   }
 
@@ -300,7 +307,12 @@ class SismasensComponent : public PollingComponent {
     // --- Interrupt INT1: collapse / shutoff ---
     if (g_interrupt1Flag) {
       g_interrupt1Flag = false;
-      d7s_.readEventRegister();
+      uint8_t ev = d7s_.readEventRegister();
+      // LOGW per massima visibilità: mostra sempre il raw byte e lo stato del pin.
+      // Se INT1 scatta ma ev=0x00 → evento già letto/azzerato o glitch.
+      // Se INT1 non scatta mai → problema hardware (pin non collegato o D7S non inizializzato).
+      ESP_LOGW("run", ">   INT1 fired! event=0x%02X (collapse=%d shutoff=%d) pin=%d",
+               ev, d7s_.isCollapseEvent(), d7s_.isShutoffEvent(), digitalRead(INT1));
 
       if (d7s_.isCollapseEvent()) {
         cl_ = true;
