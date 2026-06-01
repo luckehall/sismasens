@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.4";
+  static constexpr const char* FW_VERSION = "4.0.5";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -159,7 +159,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.4             #");
+    ESP_LOGI("main", "#             ver. 4.0.5             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -238,6 +238,18 @@ class SismasensComponent : public PollingComponent {
     ESP_LOGD("init", ">   D7S - OFFSET ACQUIRED! state=%d", d7s_.getState());
 
     d7s_.resetEvents();
+    // Azzera i flag software: durante initialize()/acquireOffset() (interrupt già attivi)
+    // il D7S può aver toggleato INT1/INT2. Il registro EVENT è ora pulito, ma i flag
+    // potrebbero essere stale → al primo update() verrebbero letti come eventi falsi.
+    g_interrupt1Flag = false;
+    g_interrupt2Flag = false;
+
+    // Pubblica stato iniziale 0 a HA: le entità collapse/shutoff/earthquake partono
+    // esplicitamente da false, non da "unavailable" o dal valore del riavvio precedente.
+    if (earthquake_sensor_ != nullptr) earthquake_sensor_->publish_state(false);
+    if (collapse_sensor_   != nullptr) collapse_sensor_->publish_state(false);
+    if (shutoff_sensor_    != nullptr) shutoff_sensor_->publish_state(false);
+
     ESP_LOGD("init", ">   D7S - READY!");
   }
 
