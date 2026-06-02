@@ -52,6 +52,10 @@ git submodule update --remote backend
 cd backend && docker compose up -d
 ```
 
+## Versione corrente
+
+**FW 4.1.1** — collapse software in tempo reale su SI istantaneo > 10 cm/s
+
 ## Note sviluppo
 
 - `backend/` è un **git submodule** privato: modifiche vanno committate *prima* nel repo `sismasens-backend`, poi aggiornato il puntatore in `sismasens`

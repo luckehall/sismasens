@@ -16,6 +16,23 @@ Il meccanismo hardware di collapse detection del D7S non ha mai prodotto un even
 ### Corretto
 - `setAxis(AXIS_AUTO_SWITCH)` e `setThreshold(THRESHOLD_LOW)` riapplicati dopo il completamento di `initialize()` e `acquireOffset()` sia in `setup()` che in `doFullClear()`. Il D7S può resettare REG_CTRL durante le fasi di calibrazione; senza ri-applicarli il sensore operava con asse YZ fisso e soglia alta (default hardware), abbassando i valori SI calcolati.
 
+## [FW 4.0.10] — 2026-06-01
+
+### Aggiunto
+- Diagnostica INT1 handler: log LOGW con raw byte EVENT (`event=0x%02X`), singoli bit collapse/shutoff e stato pin al momento della lettura, per correlare il trigger hardware con il contenuto del registro read-clear 0x1002.
+
+## [FW 4.0.9] — 2026-06-01
+
+### Corretto
+- Interrupt INT1/INT2 spostati dopo `resetEvents()` e `g_interrupt1Flag = false`: in precedenza venivano abilitati prima dell'inizializzazione, consentendo falsi trigger durante `initialize()` e `acquireOffset()`.
+- INT1 trigger cambiato da `CHANGE` a `FALLING`: INT1 è open-drain attivo-basso; `CHANGE` scattava anche sul rilascio, generando un secondo handler spurio.
+
+## [FW 4.0.8] — 2026-06-01
+
+### Aggiunto
+- Diagnostica hardware post-setup: log LOGW di stato pin INT1 e INT2 (atteso: 1=idle) per rilevare eventi residui del D7S non azzerati da `resetEvents()`.
+- INT1 handler: log LOGW del raw byte EVENT con decodifica bit0/bit1 per distinguere shutoff, collapse, evento già letto o assenza di trigger hardware.
+
 ## [FW 4.0.0] — 2026-05-31
 
 ### Modificato
