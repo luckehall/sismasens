@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.10";
+  static constexpr const char* FW_VERSION = "4.0.11";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -125,8 +125,10 @@ class SismasensComponent : public PollingComponent {
       vTaskDelay(pdMS_TO_TICKS(200));
       if (d7s_.getState() == NORMAL_MODE) break;
     }
-
     esp_task_wdt_reset();
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
+
     d7s_.acquireOffset();
     // Attende completamento offset acquisition
     for (int i = 0; i < 30; i++) {
@@ -135,6 +137,8 @@ class SismasensComponent : public PollingComponent {
       if (d7s_.getState() == NORMAL_MODE) break;
     }
     esp_task_wdt_reset();
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
 
     ESP_LOGD("clear", ">   CLEAR SENSOR - DONE");
 
@@ -159,7 +163,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.10            #");
+    ESP_LOGI("main", "#             ver. 4.0.11            #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -229,6 +233,11 @@ class SismasensComponent : public PollingComponent {
     }
     esp_task_wdt_reset();
     ESP_LOGD("init", ">   D7S - INITIALIZED! state=%d", d7s_.getState());
+    // Il D7S potrebbe resettare REG_CTRL (asse+soglia) durante l'Initial Installation Mode.
+    // Re-applicare dopo che il sensore torna in NORMAL_MODE garantisce i valori attesi.
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
+    ESP_LOGD("init", ">   D7S - axis+threshold reapplied post-init");
 
     // Retry acquireOffset() con la stessa logica di verifica.
     for (int attempt = 0; attempt < 10; attempt++) {
@@ -246,6 +255,9 @@ class SismasensComponent : public PollingComponent {
     }
     esp_task_wdt_reset();
     ESP_LOGD("init", ">   D7S - OFFSET ACQUIRED! state=%d", d7s_.getState());
+    d7s_.setAxis(AXIS_AUTO_SWITCH);
+    d7s_.setThreshold(THRESHOLD_LOW);
+    ESP_LOGD("init", ">   D7S - axis+threshold reapplied post-offset");
 
     d7s_.resetEvents();
     ESP_LOGD("init", ">   D7S - EVENTS RESET before enabling interrupts");
