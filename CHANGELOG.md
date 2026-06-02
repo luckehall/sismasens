@@ -1,5 +1,10 @@
 # Changelog
 
+## [FW 4.1.1] — 2026-06-02
+
+### Corretto
+- Collapse software: il flag viene posto a `1` in tempo reale durante il terremoto, nel ciclo di lettura istantanea (ogni 5 s), non più a fine evento su `getLatestSI`. Si azzera a `0` al termine del terremoto insieme agli altri flag. Il comportamento precedente (valutazione post-evento) causava un ritardo inaccettabile tra il superamento della soglia SI e la segnalazione a HA/cloud.
+
 ## [FW 4.1.0] — 2026-06-02
 
 ### Aggiunto
