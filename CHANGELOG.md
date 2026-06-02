@@ -1,5 +1,16 @@
 # Changelog
 
+## [FW 4.1.0] — 2026-06-02
+
+### Aggiunto
+- Fallback software per collapse: se al termine di un terremoto `SI > 10 cm/s`, il flag collapse viene forzato a `true` indipendentemente dal pin INT1 del D7S.
+
+### Motivazione
+Il meccanismo hardware di collapse detection del D7S non ha mai prodotto un evento bit1 nel registro EVENT (0x1002) in nessuna condizione di test, nonostante SI e PGA elevati e tentativi su più versioni firmware (4.0.x). La soglia interna del sensore non è documentata né configurabile via I2C. SI > 10 cm/s corrisponde a intensità JMA 5+ (zona di rischio strutturale) ed è una soglia conservativa che replica il comportamento atteso. La soluzione software è esplicita nei log (`SW COLLAPSE: SI=... > 10.0 cm/s`) per distinguerla da un eventuale futuro trigger hardware.
+
+### Corretto
+- `setAxis(AXIS_AUTO_SWITCH)` e `setThreshold(THRESHOLD_LOW)` riapplicati dopo il completamento di `initialize()` e `acquireOffset()` sia in `setup()` che in `doFullClear()`. Il D7S può resettare REG_CTRL durante le fasi di calibrazione; senza ri-applicarli il sensore operava con asse YZ fisso e soglia alta (default hardware), abbassando i valori SI calcolati.
+
 ## [FW 4.0.0] — 2026-05-31
 
 ### Modificato

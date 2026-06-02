@@ -53,7 +53,7 @@ class SismasensComponent : public PollingComponent {
   static const int SET       = 25;  // OUT - hard reset D7S
   static const int RESET_PIN = 26;  // IN  - backup jumper clear (collegato a GPIO27)
 
-  static constexpr const char* FW_VERSION = "4.0.11";
+  static constexpr const char* FW_VERSION = "4.1.0";
   const char* get_fw_version() const { return FW_VERSION; }
 
   D7S d7s_;
@@ -163,7 +163,7 @@ class SismasensComponent : public PollingComponent {
   void setup() override {
     ESP_LOGI("main", "######################################");
     ESP_LOGI("main", "#         SISMASENS project          #");
-    ESP_LOGI("main", "#             ver. 4.0.11            #");
+    ESP_LOGI("main", "#              ver. 4.1.0             #");
     ESP_LOGI("main", "######################################");
 
     ESP_LOGD("init", "!!! INITIALIZATION !!!");
@@ -367,6 +367,16 @@ class SismasensComponent : public PollingComponent {
         ESP_LOGD("run", ">   READ lastTEMP");
 
         MAG_ = magnitude(SI_, PGA_);                      // scPGA calibrata in g
+
+        // Fallback software collapse: il D7S non espone un threshold configurabile
+        // per la detection collapse. La logica interna non è mai scattata in test
+        // ripetuti nonostante SI elevati. SI > 10 cm/s corrisponde a intensità JMA 5+
+        // (zona di rischio strutturale) ed è una soglia conservativa per segnalare
+        // il collapse in assenza di trigger hardware.
+        if (SI_ > 10.0) {
+          cl_ = true;
+          ESP_LOGW("run", ">   SW COLLAPSE: SI=%.2f > 10.0 cm/s", SI_);
+        }
 
         if (earthquake_sensor_ != nullptr) earthquake_sensor_->publish_state(eq_);
         if (collapse_sensor_   != nullptr) collapse_sensor_->publish_state(cl_);
